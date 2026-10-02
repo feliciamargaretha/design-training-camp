@@ -32,7 +32,7 @@
       window.DTCStore.set(storeKey, {
         challengeId: challenge.id,
         size: size.get(),
-        explorations: explorations.map(({ id, name, intent, screens }) => ({ id, name, intent, screens })),
+        explorations: explorations.map(({ id, name, intent, screens, angles }) => ({ id, name, intent, screens, angles })),
       });
     }, 150);
   }
@@ -68,6 +68,7 @@
       name: (data && data.name) || "",
       intent: (data && data.intent) || "",
       screens: (data && data.screens) || [],
+      angles: (data && data.angles) || [],
     };
     const el = template.content.firstElementChild.cloneNode(true);
     const q = (name) => el.querySelector('[data-el="' + name + '"]');
@@ -79,6 +80,18 @@
     intentInput.id = "rd-intent-" + x.id;
     nameInput.value = x.name;
     intentInput.value = x.intent;
+
+    // What this exploration changes compared with the first design.
+    el.querySelectorAll("[data-angle]").forEach((btn) => {
+      const set = () => btn.setAttribute("aria-pressed", String(x.angles.includes(btn.dataset.angle)));
+      set();
+      btn.addEventListener("click", () => {
+        const a = btn.dataset.angle;
+        x.angles = x.angles.includes(a) ? x.angles.filter((v) => v !== a) : [...x.angles, a];
+        set();
+        save();
+      });
+    });
     q("canvas").dataset.size = size.get();
 
     nameInput.addEventListener("input", () => {

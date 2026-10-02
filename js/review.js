@@ -68,6 +68,7 @@
           label: (x.name || "").trim() || "Exploration " + "ABCDEFGHIJ"[i],
           intent: x.intent || "",
           screens: x.screens,
+          angles: x.angles || [],
           exploration: true,
         });
       });
@@ -88,7 +89,7 @@
   function signature() {
     return JSON.stringify([
       analysis ? analysis.observations.map((o) => o.title) : [],
-      columns.map((c) => [c.id, c.screens.map((s) => s.id)]),
+      columns.map((c) => [c.id, c.screens.map((s) => s.id), c.angles || []]),
     ]);
   }
 
@@ -186,6 +187,7 @@
 
     table.replaceChildren(thead, tbody, tfoot);
     renderTally();
+    renderRange();
     renderCritique();
   }
 
@@ -212,6 +214,67 @@
       li.append(name, score, bar);
       return li;
     }));
+  }
+
+  // ---------- Range ----------
+  const VERDICTS = { wide: "Wide range", some: "Some range", narrow: "Narrow range" };
+  const RELATIONS = { new_direction: "New direction", variation: "Variation", reskin: "Reskin" };
+  const DELIVERED = { yes: "", partly: " (partly)", no: " (not really)" };
+
+  function renderRange() {
+    const section = $("rv-range");
+    const r = review.range;
+    section.hidden = !r || !(r.summary || r.explorations.length);
+    if (section.hidden) return;
+
+    const verdict = $("rv-range-verdict");
+    verdict.hidden = !r.verdict;
+    verdict.textContent = VERDICTS[r.verdict] || "";
+    verdict.className = "range__verdict range__verdict--" + (r.verdict || "some");
+    $("rv-range-summary").textContent = r.summary;
+
+    $("rv-range-list").replaceChildren(...r.explorations.map((e) => {
+      const col = columns.find((c) => c.id === e.colId);
+      if (!col) return document.createComment("");
+      const li = document.createElement("li");
+      li.className = "range__item";
+      const img = document.createElement("img");
+      img.src = screenUrl(col.screens[0]);
+      img.alt = "";
+      const text = document.createElement("div");
+      text.className = "range__text";
+      const top = document.createElement("p");
+      top.className = "range__name";
+      top.textContent = col.label;
+      if (e.relation) {
+        const rel = document.createElement("span");
+        rel.className = "range__rel range__rel--" + e.relation;
+        rel.textContent = RELATIONS[e.relation];
+        top.append(" ", rel);
+      }
+      const bet = document.createElement("p");
+      bet.className = "range__bet";
+      bet.textContent = e.bet;
+      text.append(top, bet);
+      if (e.angles.length) {
+        const angles = document.createElement("p");
+        angles.className = "range__angles";
+        e.angles.forEach((a) => {
+          const chip = document.createElement("span");
+          chip.className = "range__angle range__angle--" + (a.delivered || "yes");
+          chip.textContent = ANGLE_NAMES[a.angle].replace(/^./, (c) => c.toUpperCase()) + (DELIVERED[a.delivered] || "");
+          angles.append(chip);
+        });
+        text.append(angles);
+      }
+      li.append(img, text);
+      return li;
+    }));
+
+    $("rv-range-shared-wrap").hidden = !r.shared;
+    $("rv-range-shared").textContent = r.shared;
+    $("rv-range-untried-wrap").hidden = !r.untried;
+    $("rv-range-untried").textContent = r.untried;
   }
 
   // ---------- Design review cards ----------
@@ -506,10 +569,19 @@
     return picked;
   }
 
+  const ANGLE_NAMES = {
+    hero: "hero and priority",
+    structure: "structure",
+    components: "components and interaction",
+    tone: "visual tone",
+  };
+
   function describeColumn(col) {
+    const angles = (col.angles || []).map((a) => ANGLE_NAMES[a]).filter(Boolean);
     return '"' + col.label + '"' +
       (col.exploration ? " (a redesign exploration)" : " (the learner's original design, before studying references)") +
-      (col.intent ? ', intent: "' + col.intent.slice(0, 140) + '"' : "");
+      (col.intent ? ', intent: "' + col.intent.slice(0, 140) + '"' : "") +
+      (angles.length ? ", the learner says it changes: " + angles.join(", ") : "");
   }
 
   // The part of the prompt both routes share: what to judge and the reply shape.
@@ -535,6 +607,17 @@
         "are the approximate position of the element the point is about, as a percentage (0–100) of that screen's width and height" +
         (reading ? " (work it out from the positions and the screen size in the reading)" : "") +
         '. Use null for x and y when the point is about the whole screen.',
+      "Then judge the range of the exploration as a whole. In product design, exploring mostly means making different bets " +
+        "about what matters most on the screen: a different hero and hierarchy, a different structure, or different components " +
+        "and interaction. Visual tone usually varies less because the brand and the category set it; count tone as range only " +
+        "where this brief leaves room for it, and say so when it doesn't.",
+      '   For each exploration: "bet": one short line naming what it prioritizes; "relation" to the original and the other ' +
+        'explorations: "new_direction" (a different bet), "variation" (the same bet, rearranged or with different components) ' +
+        'or "reskin" (the same structure and hierarchy with different styling); "angles": for each change the learner says it ' +
+        'makes, whether it really does: [{"angle": "hero"|"structure"|"components"|"tone", "delivered": "yes"|"partly"|"no"}].',
+      '   Overall: "verdict": "wide", "some" or "narrow"; "summary": 1–2 sentences on how far the learner explored; ' +
+        '"shared": the assumption every exploration keeps, in one sentence ("" if there is none); "untried": one concrete ' +
+        "direction for this brief that none of them tried, as a different bet, in 1–2 sentences.",
       "Then compare the explorations and write a short summary.",
       "",
       "Reply with only JSON:",
@@ -542,6 +625,7 @@
         ' values in observation order], "note": string, "overall": string, ' +
         '"strengths": [{"text": string, "screen": number, "x": number|null, "y": number|null}], ' +
         '"improvements": [{"text": string, "screen": number, "x": number|null, "y": number|null}]}], ' +
+        '"range": {"verdict", "summary", "shared", "untried", "explorations": [{"label", "bet", "relation", "angles"}]}, ' +
         SUMMARY_SHAPE + "}",
     ];
   }
@@ -590,9 +674,37 @@
       );
       review.filledBy[target.id] = "claude";
     });
+    review.range = cleanRange(raw.range);
     review.summary = cleanSummary(raw.summary);
     review.mode = mode;
     return true;
+  }
+
+  function cleanRange(r) {
+    if (!r || typeof r !== "object") return null;
+    const str = (x) => (typeof x === "string" ? x.trim() : "");
+    const byLabel = new Map(columns.filter((c) => c.exploration).map((c) => [c.label.toLowerCase(), c]));
+    const explorations = (Array.isArray(r.explorations) ? r.explorations : [])
+      .map((e) => {
+        const col = e && byLabel.get(str(e.label).toLowerCase());
+        if (!col) return null;
+        return {
+          colId: col.id,
+          bet: str(e.bet),
+          relation: ["new_direction", "variation", "reskin"].includes(e.relation) ? e.relation : null,
+          angles: (Array.isArray(e.angles) ? e.angles : [])
+            .filter((a) => a && ANGLE_NAMES[a.angle])
+            .map((a) => ({ angle: a.angle, delivered: ["yes", "partly", "no"].includes(a.delivered) ? a.delivered : null })),
+        };
+      })
+      .filter(Boolean);
+    return {
+      verdict: ["wide", "some", "narrow"].includes(r.verdict) ? r.verdict : null,
+      summary: str(r.summary),
+      shared: str(r.shared),
+      untried: str(r.untried),
+      explorations,
+    };
   }
 
   async function reviewWithImages(sample, limits, refresh) {
@@ -834,7 +946,9 @@
       // Look again only when the explorations changed since Claude's last look.
       const needsClaude = columns.some((c) => c.exploration && !review.verdicts[c.id]) ||
         // Reviews from before the overall take and annotated points.
-        columns.some((c) => c.exploration && !(review.critique && review.critique[c.id] && "overall" in review.critique[c.id]));
+        columns.some((c) => c.exploration && !(review.critique && review.critique[c.id] && "overall" in review.critique[c.id])) ||
+        // Reviews from before the range check.
+        !("range" in review);
       if (needsClaude || review.signature !== signature()) run("images", true);
       else rerunBtn.hidden = false;
     } else {

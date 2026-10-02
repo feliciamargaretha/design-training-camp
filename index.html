@@ -329,8 +329,17 @@
           <div class="toolbar__row toolbar__row--props">
             <label class="prop">
               <span class="prop__label">Intent</span>
-              <input class="prop__input" data-el="intent" type="text" maxlength="140" placeholder="What's different about this one? e.g. total pinned to the button">
+              <input class="prop__input" data-el="intent" type="text" maxlength="140" placeholder="What bet does this one make? e.g. speed for returning customers">
             </label>
+            <div class="prop prop--angles">
+              <span class="prop__label">Changes</span>
+              <div class="angles" data-el="angles" role="group" aria-label="What this exploration changes compared with your first design">
+                <button type="button" class="angle" data-angle="hero" aria-pressed="false">Hero</button>
+                <button type="button" class="angle" data-angle="structure" aria-pressed="false">Structure</button>
+                <button type="button" class="angle" data-angle="components" aria-pressed="false">Components</button>
+                <button type="button" class="angle" data-angle="tone" aria-pressed="false">Visual tone</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="canvas canvas--compact" data-el="canvas" data-size="m">
@@ -386,6 +395,30 @@
       <div class="rv-scroll">
         <table class="rv-table" id="rv-table"></table>
       </div>
+
+      <section class="range" id="rv-range" aria-labelledby="rv-range-title" hidden>
+        <div class="crit-section__head">
+          <h2 id="rv-range-title">How far did you explore?</h2>
+          <p>Whether your explorations made different bets, not just different styling</p>
+        </div>
+        <div class="range__card">
+          <div class="range__top">
+            <span class="range__verdict" id="rv-range-verdict" hidden></span>
+            <p class="range__summary" id="rv-range-summary"></p>
+          </div>
+          <ul class="range__list" id="rv-range-list"></ul>
+          <div class="range__foot">
+            <div id="rv-range-shared-wrap">
+              <p class="rv-summary__label">What they all assume</p>
+              <p id="rv-range-shared"></p>
+            </div>
+            <div id="rv-range-untried-wrap">
+              <p class="rv-summary__label">A direction you didn't try</p>
+              <p id="rv-range-untried"></p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section class="crit-section" id="rv-critique" aria-labelledby="rv-critique-title" hidden>
         <div class="crit-section__head">
