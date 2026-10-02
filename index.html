@@ -7,11 +7,11 @@
   <meta name="description" content="A little practice, every day. Design, study, compare, redesign.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <main class="frame">
+  <main class="frame" data-page="home">
     <header class="topbar">
       <p class="eyebrow">A little practice. Every day.</p>
       <p class="pill">Your pace · 4 rounds · 1 better designer</p>
@@ -26,7 +26,7 @@
           A stronger designer on the other side.
         </p>
         <div class="hero__actions">
-          <a class="btn" href="design.html" id="start">Start today's challenge</a>
+          <a class="btn" href="#design" id="start">Start today's challenge</a>
           <span class="hint">Your daily creative workout</span>
         </div>
         <p class="brief" id="brief" hidden>
@@ -89,9 +89,188 @@
     </section>
   </main>
 
+  <main class="frame" data-page="design" data-upload="design" hidden>
+    <header class="topbar">
+      <a class="eyebrow eyebrow--link" href="#">← Design training camp</a>
+      <p class="pill">Round 1 of 4 · No timer</p>
+    </header>
+
+    <div class="round-title">
+      <span class="round-title__num">01</span>
+      <span class="round-title__rule" aria-hidden="true"></span>
+      <h1 class="round-title__name">Design</h1>
+    </div>
+
+    <p class="eyebrow" data-el="challenge-label">Your challenge</p>
+    <p class="challenge" data-el="challenge-brief">Design today's screen.</p>
+
+    <section class="workspace" data-el="workspace" aria-label="Your design">
+      <div class="toolbar">
+        <div class="toolbar__row">
+          <div class="segmented" role="group" aria-label="Upload">
+            <button type="button" class="segmented__item is-active" data-el="add-images">Add images</button>
+            <span class="segmented__note" data-el="count">No screens yet</span>
+          </div>
+          <div class="toolbar__actions">
+            <button type="button" class="text-btn" data-el="clear" disabled>Clear</button>
+            <a class="btn btn--sm is-disabled" data-el="continue" href="#study" aria-disabled="true">Continue to Study →</a>
+          </div>
+        </div>
+        <div class="toolbar__row toolbar__row--props">
+          <label class="prop">
+            <span class="prop__label">Intent</span>
+            <input class="prop__input" data-el="intent" id="design-intent" type="text" placeholder="What were you going for? e.g. calm, fast, one clear total" maxlength="140">
+          </label>
+          <div class="prop">
+            <span class="prop__label">Size</span>
+            <div class="segmented segmented--sm" role="group" aria-label="Preview size">
+              <button type="button" class="segmented__item" data-size="s">S</button>
+              <button type="button" class="segmented__item is-active" data-size="m">M</button>
+              <button type="button" class="segmented__item" data-size="l">L</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="canvas" data-el="canvas" data-size="m">
+        <button type="button" class="dropzone" data-el="dropzone">
+          <span class="dropzone__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
+          </span>
+          <span class="dropzone__title">Drop your Figma exports here</span>
+          <span class="dropzone__hint">or click to browse. You can also paste a copied frame.<br>PNG or JPG, one or more screens.</span>
+        </button>
+        <ul class="screens" data-el="screens" hidden></ul>
+      </div>
+      <input type="file" data-el="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+    </section>
+  </main>
+
+  <main class="frame" data-page="study" hidden>
+    <header class="topbar">
+      <a class="eyebrow eyebrow--link" href="#design">← Back to Design</a>
+      <p class="pill" id="study-timer-state">Round 2 of 4 · 10 min</p>
+    </header>
+
+    <div class="round-title">
+      <button type="button" class="round-title__num round-title__timer" id="study-timer" aria-label="Pause timer">10:00</button>
+      <span class="round-title__rule" aria-hidden="true"></span>
+      <h1 class="round-title__name">Study</h1>
+    </div>
+
+    <div class="refs-head">
+      <p class="refs-head__title" id="refs-title">Today's references. Plenty to notice.</p>
+      <p class="refs-head__note" id="refs-note">Finding references on Mobbin…</p>
+    </div>
+
+    <ul class="refs" id="refs" aria-live="polite"></ul>
+
+    <p class="refs-notice" id="refs-notice" hidden></p>
+
+    <div class="refs-empty" id="refs-empty" hidden>
+      <p id="refs-empty-text">Mobbin isn't connected here yet.</p>
+      <a class="btn btn--sm" id="refs-mobbin" href="https://mobbin.com" target="_blank" rel="noopener">Browse today's pattern on Mobbin ↗</a>
+    </div>
+
+    <section class="notice" aria-labelledby="notice-title">
+      <div class="notice__head">
+        <h2 id="notice-title">What do you notice?</h2>
+        <p>Your observations first. Analysis comes next.</p>
+      </div>
+      <div class="notice__cols">
+        <fieldset class="notice__col" data-kind="patterns">
+          <legend><span class="notice__sign">+</span> 3 patterns</legend>
+          <label><span>1</span><input id="patterns-1" type="text" placeholder="A pattern you see across screens…"></label>
+          <label><span>2</span><input id="patterns-2" type="text" placeholder="Another one…"></label>
+          <label><span>3</span><input id="patterns-3" type="text" placeholder="And one more…"></label>
+        </fieldset>
+        <fieldset class="notice__col" data-kind="dos">
+          <legend><span class="notice__sign">+</span> 3 do's</legend>
+          <label><span>1</span><input id="dos-1" type="text" placeholder="Something worth borrowing…"></label>
+          <label><span>2</span><input id="dos-2" type="text" placeholder="Another one…"></label>
+          <label><span>3</span><input id="dos-3" type="text" placeholder="And one more…"></label>
+        </fieldset>
+        <fieldset class="notice__col" data-kind="donts">
+          <legend><span class="notice__sign">−</span> 3 don'ts</legend>
+          <label><span>1</span><input id="donts-1" type="text" placeholder="Something you would avoid…"></label>
+          <label><span>2</span><input id="donts-2" type="text" placeholder="Another one…"></label>
+          <label><span>3</span><input id="donts-3" type="text" placeholder="And one more…"></label>
+        </fieldset>
+      </div>
+      <div class="notice__foot">
+        <a class="btn btn--sm" href="#compare">Continue to Compare →</a>
+      </div>
+    </section>
+  </main>
+
+  <main class="frame" data-page="compare" hidden>
+    <header class="topbar">
+      <a class="eyebrow eyebrow--link" href="#study">← Back to Study</a>
+      <p class="pill" id="cmp-timer-state">Round 3 of 4 · 10 min</p>
+    </header>
+
+    <div class="round-title">
+      <button type="button" class="round-title__num round-title__timer" id="cmp-timer" aria-label="Pause timer">10:00</button>
+      <span class="round-title__rule" aria-hidden="true"></span>
+      <h1 class="round-title__name">Compare</h1>
+    </div>
+
+    <div class="compare">
+      <section class="analysis" aria-labelledby="cmp-headline">
+        <div class="analysis__head">
+          <span class="analysis__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/></svg>
+          </span>
+          <div class="analysis__titles">
+            <h2 class="analysis__headline" id="cmp-headline">A closer look at today's screens.</h2>
+            <p class="analysis__meta"><span id="cmp-meta">Claude's analysis</span>
+              <button type="button" class="text-btn text-btn--inline" id="cmp-rerun" hidden>Run again</button></p>
+          </div>
+        </div>
+
+        <div class="analysis__status" id="cmp-status" role="status" hidden>
+          <p id="cmp-status-text"></p>
+          <a class="btn btn--sm" id="cmp-status-action" href="#study" hidden></a>
+        </div>
+
+        <ol class="obs-list" id="cmp-list" aria-live="polite"></ol>
+      </section>
+
+      <aside class="eye" aria-labelledby="eye-title">
+        <h2 class="eye__title" id="eye-title">Your eye vs. the analysis</h2>
+        <p class="eye__lede">Mark each observation you also noticed. Which details will you carry into your redesign?</p>
+
+        <h3 class="eye__label">Patterns you noticed</h3>
+        <ul class="eye__notes" id="cmp-patterns"></ul>
+        <h3 class="eye__label">Your do's</h3>
+        <ul class="eye__notes" id="cmp-dos"></ul>
+        <h3 class="eye__label">Your don'ts</h3>
+        <ul class="eye__notes" id="cmp-donts"></ul>
+
+        <div class="eye__score">
+          <p class="eye__count" id="cmp-count">0 of 10 observations noticed</p>
+          <p>This isn't a score. The interesting part is what you can see now that you couldn't before.</p>
+        </div>
+
+        <a class="btn btn--sm eye__next" href="#redesign">Continue to Redesign →</a>
+      </aside>
+    </div>
+  </main>
+
+  <dialog class="lightbox" id="lightbox">
+    <button type="button" class="lightbox__close" id="lightbox-close" aria-label="Close">×</button>
+    <img id="lightbox-img" alt="">
+    <p class="lightbox__caption"><span id="lightbox-app"></span><a id="lightbox-link" href="https://mobbin.com" target="_blank" rel="noopener">Open on Mobbin ↗</a></p>
+  </dialog>
+
   <script src="js/challenges.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/timer.js"></script>
   <script src="js/references.js"></script>
   <script src="js/landing.js"></script>
+  <script src="js/upload.js"></script>
+  <script src="js/study.js"></script>
+  <script src="js/compare.js"></script>
 </body>
 </html>

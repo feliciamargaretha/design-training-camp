@@ -7,6 +7,12 @@ A little practice, every day. A static site for training your visual design eye 
 3. **Compare** (10 min). Put your design next to the references and find your blind spots.
 4. **Redesign** (no timer). Upload the improved version.
 
+## How it's built
+
+One page (`index.html`) holds every round; the URL hash picks which one shows
+(`#design`, `#study`, `#compare`). Each round's code lives in `js/`. Your uploads,
+notes and today's analysis stay in your browser (IndexedDB), never on a server.
+
 ## Run locally
 
 No build step. Open `index.html` or serve the folder:
@@ -24,3 +30,10 @@ Compare. Anywhere else, the Study round falls back to a link into Mobbin search
 (`mobbinUrl()` in `js/challenges.js`).
 
 Mobbin screenshots are only fetched at runtime and never committed to this repo.
+
+## Compare analysis
+
+The Compare round asks Claude (the artifact `sample` capability) to look at the
+reference screens and your uploaded design and write 10 observations. Like the
+Mobbin references, it only runs inside Claude; it uses your own Claude usage and
+is kept for the day so reloading doesn't ask again.

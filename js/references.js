@@ -11,7 +11,7 @@
   const COUNT = 5;
 
   const MESSAGES = {
-    unavailable: "Mobbin references load from the start page when this site runs inside Claude. Open today's pattern on Mobbin and study 4–5 screens side by side.",
+    unavailable: "Mobbin references load when this site is open inside Claude. Open today's pattern on Mobbin and study 4–5 screens side by side.",
     server_not_connected: "Mobbin isn't connected to your Claude account. Add it in claude.ai Settings → Connectors, then reload.",
     selection_required: "You have more than one Mobbin connector. Choose one when Claude asks, then reload.",
     needs_reauth: "Your Mobbin connection expired. Reconnect Mobbin in claude.ai Settings → Connectors, then reload.",
@@ -61,7 +61,29 @@
       .filter((s) => s.image);
   }
 
-  async function load(challenge) {
+  // One search per page load, shared by the start page and Study.
+  let inFlight = null;
+  function load(challenge) {
+    if (!inFlight) {
+      inFlight = loadOnce(challenge).then((res) => {
+        if (res.status !== "ok") inFlight = null;
+        return res;
+      });
+    }
+    return inFlight;
+  }
+
+  // Data URL -> Blob, for sending reference screens to Claude.
+  function toBlob(dataUrl) {
+    const [head, b64] = dataUrl.split(",");
+    const type = head.slice(5, head.indexOf(";"));
+    const bytes = atob(b64);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    return new Blob([arr], { type });
+  }
+
+  async function loadOnce(challenge) {
     const storeKey = window.DTCStore.key("refs");
     const saved = await window.DTCStore.get(storeKey);
     if (saved && saved.challengeId === challenge.id && saved.screens.length) {
@@ -94,5 +116,5 @@
     }
   }
 
-  window.DTCRefs = { load };
+  window.DTCRefs = { load, toBlob };
 })();
