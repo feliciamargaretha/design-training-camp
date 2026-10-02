@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design · Design Training Camp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main class="frame" data-round="design" data-next="study.html">
+    <header class="topbar">
+      <a class="eyebrow eyebrow--link" href="index.html">← Design training camp</a>
+      <p class="pill">Round 1 of 4 · No timer</p>
+    </header>
+
+    <div class="round-title">
+      <span class="round-title__num">01</span>
+      <span class="round-title__rule" aria-hidden="true"></span>
+      <h1 class="round-title__name">Design</h1>
+    </div>
+
+    <p class="eyebrow" id="challenge-label">Your challenge</p>
+    <p class="challenge" id="challenge-brief">Design today's screen.</p>
+
+    <section class="workspace" id="workspace" aria-label="Your design">
+      <div class="toolbar">
+        <div class="toolbar__row">
+          <div class="segmented" role="group" aria-label="Upload">
+            <button type="button" class="segmented__item is-active" id="add-images">Add images</button>
+            <span class="segmented__note" id="count">No screens yet</span>
+          </div>
+          <div class="toolbar__actions">
+            <button type="button" class="text-btn" id="clear" disabled>Clear</button>
+            <a class="btn btn--sm is-disabled" id="continue" href="study.html" aria-disabled="true">Continue to Study →</a>
+          </div>
+        </div>
+        <div class="toolbar__row toolbar__row--props">
+          <label class="prop">
+            <span class="prop__label">Intent</span>
+            <input class="prop__input" id="intent" type="text" placeholder="What were you going for? e.g. calm, fast, one clear total" maxlength="140">
+          </label>
+          <div class="prop">
+            <span class="prop__label">Size</span>
+            <div class="segmented segmented--sm" role="group" aria-label="Preview size">
+              <button type="button" class="segmented__item" data-size="s">S</button>
+              <button type="button" class="segmented__item is-active" data-size="m">M</button>
+              <button type="button" class="segmented__item" data-size="l">L</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="canvas" id="canvas" data-size="m">
+        <button type="button" class="dropzone" id="dropzone">
+          <span class="dropzone__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
+          </span>
+          <span class="dropzone__title">Drop your Figma exports here</span>
+          <span class="dropzone__hint">or click to browse. You can also paste a copied frame.<br>PNG or JPG, one or more screens.</span>
+        </button>
+        <ul class="screens" id="screens" hidden></ul>
+      </div>
+      <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+    </section>
+  </main>
+
+  <script src="js/challenges.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/upload.js"></script>
+</body>
+</html>

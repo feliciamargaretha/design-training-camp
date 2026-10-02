@@ -5,18 +5,18 @@
   const MOBBIN_SEARCH = "https://mobbin.com/search/apps/";
 
   const CHALLENGES = [
-    { name: "Onboarding",        pattern: "Onboarding",        platform: "ios", brief: "Welcome a first-time user to a habit-tracking app." },
-    { name: "Sign up",           pattern: "Signup",            platform: "ios", brief: "Create an account screen for a banking app." },
-    { name: "Paywall",           pattern: "Paywall",           platform: "ios", brief: "Convince someone to upgrade to a premium meditation plan." },
-    { name: "Empty state",       pattern: "Empty State",       platform: "ios", brief: "An empty inbox for a team chat app." },
-    { name: "Checkout",          pattern: "Checkout",          platform: "web", brief: "Checkout for a small independent coffee roaster." },
-    { name: "Settings",          pattern: "Settings",          platform: "ios", brief: "Notification settings for a news app." },
-    { name: "Profile",           pattern: "Profile",           platform: "ios", brief: "A user profile for a running community." },
-    { name: "Pricing",           pattern: "Pricing",           platform: "web", brief: "A pricing page for a design-collaboration tool." },
-    { name: "Search",            pattern: "Search",            platform: "ios", brief: "Search results for a recipe app." },
-    { name: "Dashboard",         pattern: "Dashboard",         platform: "web", brief: "A home dashboard for a personal finance tool." },
-    { name: "Error",             pattern: "Error",             platform: "ios", brief: "A payment failed screen that keeps the user calm." },
-    { name: "Notifications",     pattern: "Notifications",     platform: "ios", brief: "An activity feed for a photo-sharing app." },
+    { id: 1,  name: "Onboarding",    pattern: "Onboarding",    platform: "ios", brief: "Design the first onboarding screen for a habit-tracking app." },
+    { id: 2,  name: "Sign up",       pattern: "Signup",        platform: "ios", brief: "Design a sign-up screen for a mobile banking app." },
+    { id: 3,  name: "Paywall",       pattern: "Paywall",       platform: "ios", brief: "Design a paywall for a premium meditation plan." },
+    { id: 4,  name: "Empty state",   pattern: "Empty State",   platform: "ios", brief: "Design the empty inbox of a team chat app." },
+    { id: 5,  name: "Checkout",      pattern: "Checkout",      platform: "ios", brief: "Design a checkout screen for a food delivery app." },
+    { id: 6,  name: "Settings",      pattern: "Settings",      platform: "ios", brief: "Design the notification settings for a news app." },
+    { id: 7,  name: "Profile",       pattern: "Profile",       platform: "ios", brief: "Design a user profile for a running community." },
+    { id: 8,  name: "Pricing",       pattern: "Pricing",       platform: "web", brief: "Design a pricing page for a design-collaboration tool." },
+    { id: 9,  name: "Search",        pattern: "Search",        platform: "ios", brief: "Design the search results screen for a recipe app." },
+    { id: 10, name: "Dashboard",     pattern: "Dashboard",     platform: "web", brief: "Design the home dashboard for a personal finance tool." },
+    { id: 11, name: "Error",         pattern: "Error",         platform: "ios", brief: "Design a payment-failed screen that keeps the user calm." },
+    { id: 12, name: "Notifications", pattern: "Notifications", platform: "ios", brief: "Design the activity feed for a photo-sharing app." },
   ];
 
   function mobbinUrl(challenge) {
@@ -36,5 +36,10 @@
     return CHALLENGES[dayNumber % CHALLENGES.length];
   }
 
-  window.DTC = { CHALLENGES, mobbinUrl, today };
+  function dateKey(date = new Date()) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+  }
+
+  window.DTC = { CHALLENGES, mobbinUrl, today, dateKey };
 })();
