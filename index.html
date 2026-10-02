@@ -14,7 +14,7 @@
   <main class="frame" data-page="home">
     <header class="topbar">
       <p class="eyebrow">A little practice. Every day.</p>
-      <p class="pill">Your pace · 4 rounds · 1 better designer</p>
+      <p class="pill">Your pace · 5 rounds · 1 better designer</p>
     </header>
 
     <section class="hero">
@@ -22,7 +22,7 @@
         <h1 class="hero__title">Design training camp<span class="dot">.</span></h1>
         <p class="hero__lede">
           Train your eye. Trust your instincts.<br>
-          One challenge, four focused rounds.<br>
+          One challenge, five focused rounds.<br>
           A stronger designer on the other side.
         </p>
         <div class="hero__actions">
@@ -83,16 +83,21 @@
         <li class="round">
           <div class="round__meta"><span>04</span><span>No timer</span></div>
           <h3>Redesign</h3>
-          <p>Put your new perspective into practice. Upload the new version.</p>
+          <p>Put your new perspective into practice. Upload one or more explorations.</p>
+        </li>
+        <li class="round">
+          <div class="round__meta"><span>05</span><span>No timer</span></div>
+          <h3>Review</h3>
+          <p>Check your redesign against the analysis. See what changed.</p>
         </li>
       </ol>
     </section>
   </main>
 
-  <main class="frame" data-page="design" data-upload="design" hidden>
+  <main class="frame" data-page="design" hidden>
     <header class="topbar">
       <a class="eyebrow eyebrow--link" href="#">← Design training camp</a>
-      <p class="pill">Round 1 of 4 · No timer</p>
+      <p class="pill">Round 1 of 5 · No timer</p>
     </header>
 
     <div class="round-title">
@@ -149,7 +154,7 @@
   <main class="frame" data-page="study" hidden>
     <header class="topbar">
       <a class="eyebrow eyebrow--link" href="#design">← Back to Design</a>
-      <p class="pill" id="study-timer-state">Round 2 of 4 · 10 min</p>
+      <p class="pill" id="study-timer-state">Round 2 of 5 · 10 min</p>
     </header>
 
     <div class="round-title">
@@ -206,7 +211,7 @@
   <main class="frame" data-page="compare" hidden>
     <header class="topbar">
       <a class="eyebrow eyebrow--link" href="#study">← Back to Study</a>
-      <p class="pill" id="cmp-timer-state">Round 3 of 4 · 10 min</p>
+      <p class="pill" id="cmp-timer-state">Round 3 of 5 · 10 min</p>
     </header>
 
     <div class="round-title">
@@ -257,6 +262,152 @@
     </div>
   </main>
 
+  <main class="frame" data-page="redesign" hidden>
+    <header class="topbar">
+      <a class="eyebrow eyebrow--link" href="#compare">← Back to Compare</a>
+      <p class="pill">Round 4 of 5 · No timer</p>
+    </header>
+
+    <div class="round-title">
+      <span class="round-title__num">04</span>
+      <span class="round-title__rule" aria-hidden="true"></span>
+      <h1 class="round-title__name">Redesign</h1>
+    </div>
+
+    <p class="eyebrow" id="rd-challenge-label">Your challenge</p>
+    <p class="challenge" id="rd-challenge-brief">Design today's screen.</p>
+
+    <section class="carry" id="rd-carry" aria-labelledby="rd-carry-title" hidden>
+      <div class="carry__head">
+        <h2 id="rd-carry-title">Carry into your redesign</h2>
+        <p>From Compare: what you noticed and what your first design was missing</p>
+      </div>
+      <ul class="carry__list" id="rd-carry-list"></ul>
+    </section>
+
+    <section class="workspace workspace--multi" aria-label="Your explorations">
+      <div class="toolbar workspace__bar">
+        <div class="toolbar__row">
+          <div class="segmented" role="group" aria-label="Explorations">
+            <button type="button" class="segmented__item is-active" id="rd-add">Add exploration</button>
+            <span class="segmented__note" id="rd-count">1 exploration · 0 screens</span>
+          </div>
+          <div class="toolbar__actions">
+            <span class="prop__label">Size</span>
+            <div class="segmented segmented--sm" role="group" aria-label="Preview size">
+              <button type="button" class="segmented__item" data-size="s">S</button>
+              <button type="button" class="segmented__item is-active" data-size="m">M</button>
+              <button type="button" class="segmented__item" data-size="l">L</button>
+            </div>
+            <a class="btn btn--sm is-disabled" id="rd-continue" href="#review" aria-disabled="true">Continue to Review →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="explorations" id="rd-explorations"></div>
+
+      <button type="button" class="add-exploration" id="rd-add-bottom">
+        <span aria-hidden="true">+</span> Add another exploration
+      </button>
+    </section>
+
+    <template id="rd-exploration-template">
+      <article class="exploration">
+        <div class="toolbar">
+          <div class="toolbar__row">
+            <div class="exploration__head">
+              <span class="exploration__letter" data-el="letter" aria-hidden="true">A</span>
+              <input class="exploration__name" data-el="name" type="text" maxlength="40" aria-label="Exploration name">
+            </div>
+            <div class="toolbar__actions">
+              <span class="segmented__note" data-el="count">No screens yet</span>
+              <button type="button" class="text-btn" data-el="add-images">Add images</button>
+              <button type="button" class="text-btn" data-el="clear" disabled>Clear</button>
+              <button type="button" class="text-btn" data-el="remove">Remove</button>
+            </div>
+          </div>
+          <div class="toolbar__row toolbar__row--props">
+            <label class="prop">
+              <span class="prop__label">Intent</span>
+              <input class="prop__input" data-el="intent" type="text" maxlength="140" placeholder="What's different about this one? e.g. total pinned to the button">
+            </label>
+          </div>
+        </div>
+        <div class="canvas canvas--compact" data-el="canvas" data-size="m">
+          <button type="button" class="dropzone" data-el="dropzone">
+            <span class="dropzone__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
+            </span>
+            <span class="dropzone__title">Drop this exploration's screens</span>
+            <span class="dropzone__hint">or click to browse, or paste a copied frame.</span>
+          </button>
+          <ul class="screens" data-el="screens" hidden></ul>
+        </div>
+        <input type="file" data-el="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+      </article>
+    </template>
+  </main>
+
+  <main class="frame" data-page="review" hidden>
+    <header class="topbar">
+      <a class="eyebrow eyebrow--link" href="#redesign">← Back to Redesign</a>
+      <p class="pill">Round 5 of 5 · No timer</p>
+    </header>
+
+    <div class="round-title">
+      <span class="round-title__num">05</span>
+      <span class="round-title__rule" aria-hidden="true"></span>
+      <h1 class="round-title__name">Review</h1>
+    </div>
+
+    <div class="review-head">
+      <p class="refs-head__title">Your redesign, checked against today's analysis.</p>
+      <p class="refs-head__note">Click any cell to change it</p>
+    </div>
+
+    <div class="analysis__status" id="rv-status" role="status" hidden>
+      <p id="rv-status-text"></p>
+      <a class="btn btn--sm" id="rv-status-action" href="#compare" hidden></a>
+    </div>
+
+    <div id="rv-body" hidden>
+      <ul class="rv-tally" id="rv-tally" aria-label="Observations applied per design"></ul>
+
+      <div class="rv-scroll">
+        <table class="rv-table" id="rv-table"></table>
+      </div>
+
+      <div class="rv-actions">
+        <p class="rv-hint" id="rv-summary-hint">Mark every cell for at least one exploration to get a summary.</p>
+        <button type="button" class="text-btn" id="rv-rerun" hidden>Ask Claude to check again</button>
+        <button type="button" class="btn btn--sm" id="rv-summary-btn" disabled>Write my summary</button>
+      </div>
+
+      <section class="rv-summary" id="rv-summary" aria-labelledby="rv-summary-title" hidden>
+        <h2 class="rv-summary__title" id="rv-summary-title">Today's takeaway</h2>
+        <div class="rv-summary__grid">
+          <div class="rv-summary__lead">
+            <p class="rv-summary__label">Strongest exploration</p>
+            <p class="rv-summary__strongest" id="rv-strongest"></p>
+            <p id="rv-why"></p>
+          </div>
+          <div>
+            <p class="rv-summary__label">What improved since your first design</p>
+            <p id="rv-improved"></p>
+          </div>
+          <div>
+            <p class="rv-summary__label">Practice next</p>
+            <p id="rv-next"></p>
+          </div>
+        </div>
+        <div class="rv-summary__foot">
+          <p class="rv-summary__source" id="rv-summary-source"></p>
+          <a class="btn btn--sm" href="#">Done for today</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
   <dialog class="lightbox" id="lightbox">
     <button type="button" class="lightbox__close" id="lightbox-close" aria-label="Close">×</button>
     <img id="lightbox-img" alt="">
@@ -269,8 +420,11 @@
   <script src="js/timer.js"></script>
   <script src="js/references.js"></script>
   <script src="js/landing.js"></script>
-  <script src="js/upload.js"></script>
+  <script src="js/workspace.js"></script>
+  <script src="js/design.js"></script>
   <script src="js/study.js"></script>
   <script src="js/compare.js"></script>
+  <script src="js/redesign.js"></script>
+  <script src="js/review.js"></script>
 </body>
 </html>

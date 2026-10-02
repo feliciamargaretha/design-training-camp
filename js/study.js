@@ -9,7 +9,7 @@
     el: $("study-timer"),
     stateEl: $("study-timer-state"),
     round: "study",
-    label: "Round 2 of 4",
+    label: "Round 2 of 5",
     minutes: 10,
   });
 

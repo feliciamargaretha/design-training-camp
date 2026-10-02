@@ -12,7 +12,7 @@
     el: $("cmp-timer"),
     stateEl: $("cmp-timer-state"),
     round: "compare",
-    label: "Round 3 of 4",
+    label: "Round 3 of 5",
     minutes: 10,
   });
 

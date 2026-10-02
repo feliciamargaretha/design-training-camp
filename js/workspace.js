@@ -1,14 +1,8 @@
-// Upload round (Design and Redesign). Screens are kept per day and round.
-// Each round's markup is a [data-upload="<round>"] element; parts are found
-// by data-el so both rounds can share this code on one page.
+// An upload workspace: drop zone, screen cards, add and clear. Used once in
+// Design and once per exploration in Redesign. Parts are found by data-el
+// inside `root`; saving is left to the page through `onChange`.
 (function () {
-  document.querySelectorAll("[data-upload]").forEach(setup);
-
-  function setup(root) {
-    const round = root.dataset.upload;
-    const storeKey = window.DTCStore.key(round);
-    const challenge = window.DTC.today();
-
+  function create(root, { screens: initial = [], onChange = () => {} } = {}) {
     const $ = (name) => root.querySelector('[data-el="' + name + '"]');
     const canvas = $("canvas");
     const dropzone = $("dropzone");
@@ -16,25 +10,13 @@
     const fileInput = $("file");
     const count = $("count");
     const clearBtn = $("clear");
-    const continueBtn = $("continue");
-    const intent = $("intent");
 
-    $("challenge-label").textContent = "Your challenge · " + String(challenge.id).padStart(3, "0");
-    $("challenge-brief").textContent = challenge.brief;
+    // { id, name, blob, url }
+    let screens = initial.map((s) => ({ ...s, url: URL.createObjectURL(s.blob) }));
 
-    let screens = []; // { id, name, blob, url }
-    let saveTimer = null;
-
-    function save() {
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => {
-        window.DTCStore.set(storeKey, {
-          challengeId: challenge.id,
-          intent: intent.value,
-          size: canvas.dataset.size,
-          screens: screens.map(({ id, name, blob }) => ({ id, name, blob })),
-        });
-      }, 150);
+    function changed() {
+      render();
+      onChange(screens.map(({ id, name, blob }) => ({ id, name, blob })));
     }
 
     function render() {
@@ -83,12 +65,12 @@
       const has = screens.length > 0;
       dropzone.hidden = has;
       list.hidden = !has;
-      clearBtn.disabled = !has;
-      continueBtn.classList.toggle("is-disabled", !has);
-      continueBtn.setAttribute("aria-disabled", String(!has));
-      count.textContent = has
-        ? screens.length + (screens.length === 1 ? " screen" : " screens")
-        : "No screens yet";
+      if (clearBtn) clearBtn.disabled = !has;
+      if (count) {
+        count.textContent = has
+          ? screens.length + (screens.length === 1 ? " screen" : " screens")
+          : "No screens yet";
+      }
     }
 
     function addFiles(files) {
@@ -102,43 +84,40 @@
           url: URL.createObjectURL(file),
         });
       });
-      render();
-      save();
+      changed();
     }
 
     function removeScreen(id) {
       const screen = screens.find((s) => s.id === id);
       if (screen) URL.revokeObjectURL(screen.url);
       screens = screens.filter((s) => s.id !== id);
-      render();
-      save();
+      changed();
     }
 
     // Clear asks for a second click instead of a confirm() dialog.
-    let clearArmed = false;
-    clearBtn.addEventListener("click", () => {
-      if (!clearArmed) {
-        clearArmed = true;
-        clearBtn.textContent = "Click again to clear";
-        setTimeout(() => {
-          clearArmed = false;
-          clearBtn.textContent = "Clear";
-        }, 2500);
-        return;
-      }
-      clearArmed = false;
-      clearBtn.textContent = "Clear";
-      screens.forEach((s) => URL.revokeObjectURL(s.url));
-      screens = [];
-      render();
-      save();
-    });
+    if (clearBtn) {
+      let armed = false;
+      clearBtn.addEventListener("click", () => {
+        if (!armed) {
+          armed = true;
+          clearBtn.textContent = "Click again to clear";
+          setTimeout(() => {
+            armed = false;
+            clearBtn.textContent = "Clear";
+          }, 2500);
+          return;
+        }
+        armed = false;
+        clearBtn.textContent = "Clear";
+        screens.forEach((s) => URL.revokeObjectURL(s.url));
+        screens = [];
+        changed();
+      });
+    }
 
-    continueBtn.addEventListener("click", (e) => {
-      if (!screens.length) e.preventDefault();
-    });
-
-    $("add-images").addEventListener("click", () => fileInput.click());
+    root.querySelectorAll('[data-el="add-images"]').forEach((btn) =>
+      btn.addEventListener("click", () => fileInput.click())
+    );
     dropzone.addEventListener("click", () => fileInput.click());
     fileInput.addEventListener("change", () => {
       addFiles(fileInput.files);
@@ -161,40 +140,36 @@
     );
     canvas.addEventListener("drop", (e) => addFiles(e.dataTransfer.files));
 
-    // Paste a frame copied from Figma (Copy as PNG).
-    document.addEventListener("paste", (e) => {
-      if (root.hidden || e.target === intent) return;
-      const files = [...(e.clipboardData?.items || [])]
-        .filter((item) => item.kind === "file")
-        .map((item) => item.getAsFile())
-        .filter(Boolean);
-      if (files.length) {
-        e.preventDefault();
-        addFiles(files);
-      }
-    });
+    render();
 
-    root.querySelectorAll("button[data-size]").forEach((btn) => {
-      btn.addEventListener("click", () => setSize(btn.dataset.size));
-    });
-    function setSize(size) {
-      canvas.dataset.size = size;
-      root.querySelectorAll("button[data-size]").forEach((b) =>
-        b.classList.toggle("is-active", b.dataset.size === size)
-      );
-      save();
-    }
-
-    intent.addEventListener("input", save);
-
-    // Restore today's work.
-    window.DTCStore.get(storeKey).then((saved) => {
-      if (saved && saved.challengeId === challenge.id) {
-        intent.value = saved.intent || "";
-        if (saved.size) setSize(saved.size);
-        screens = (saved.screens || []).map((s) => ({ ...s, url: URL.createObjectURL(s.blob) }));
-      }
-      render();
-    });
+    return {
+      addFiles,
+      count: () => screens.length,
+      destroy: () => screens.forEach((s) => URL.revokeObjectURL(s.url)),
+    };
   }
+
+  // Images on the clipboard (Figma's Copy as PNG), or [] if none.
+  function pastedFiles(e) {
+    return [...((e.clipboardData && e.clipboardData.items) || [])]
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+      .filter(Boolean);
+  }
+
+  // Preview size buttons ([data-size]) inside `root`, applied to `canvases()`.
+  function sizeControl(root, canvases, onChange) {
+    const buttons = [...root.querySelectorAll("button[data-size]")];
+    let current = "m";
+    function set(size, silent) {
+      current = size;
+      canvases().forEach((c) => (c.dataset.size = size));
+      buttons.forEach((b) => b.classList.toggle("is-active", b.dataset.size === size));
+      if (!silent) onChange(size);
+    }
+    buttons.forEach((b) => b.addEventListener("click", () => set(b.dataset.size)));
+    return { set, get: () => current };
+  }
+
+  window.DTCWorkspace = { create, pastedFiles, sizeControl };
 })();

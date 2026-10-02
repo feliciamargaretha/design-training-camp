@@ -1,4 +1,4 @@
-// One page, one round at a time: #design, #study, #compare, #redesign.
+// One page, one round at a time: #design, #study, #compare, #redesign, #review.
 // No hash shows the start page.
 (function () {
   const TITLES = {
@@ -7,6 +7,7 @@
     study: "Study · Design Training Camp",
     compare: "Compare · Design Training Camp",
     redesign: "Redesign · Design Training Camp",
+    review: "Review · Design Training Camp",
   };
   const hooks = {};
   let current = null;
