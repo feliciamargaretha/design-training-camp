@@ -173,6 +173,7 @@
 
     table.replaceChildren(thead, tbody, tfoot);
     renderTally();
+    renderCritique();
   }
 
   function renderTally() {
@@ -199,6 +200,59 @@
     }));
   }
 
+  function renderCritique() {
+    const section = $("rv-critique");
+    const cols = columns.filter((c) => c.exploration && review.critique && review.critique[c.id] &&
+      (review.critique[c.id].strengths.length || review.critique[c.id].improvements.length));
+    section.hidden = !cols.length;
+    if (!cols.length) return;
+    $("rv-critique-list").replaceChildren(...cols.map((col) => {
+      const c = review.critique[col.id];
+      const card = document.createElement("article");
+      card.className = "crit";
+
+      const head = document.createElement("header");
+      head.className = "crit__head";
+      const thumb = document.createElement("img");
+      const url = URL.createObjectURL(col.screens[0].blob);
+      urls.push(url);
+      thumb.src = url;
+      thumb.alt = "";
+      const titles = document.createElement("div");
+      const name = document.createElement("h3");
+      name.className = "crit__name";
+      name.textContent = col.label;
+      titles.append(name);
+      if (col.intent) {
+        const intent = document.createElement("p");
+        intent.className = "crit__intent";
+        intent.textContent = "Intent: " + col.intent;
+        titles.append(intent);
+      }
+      head.append(thumb, titles);
+
+      const body = document.createElement("div");
+      body.className = "crit__body";
+      [["What's working", c.strengths, "good"], ["What to improve", c.improvements, "improve"]].forEach(([label, items, kind]) => {
+        const col2 = document.createElement("div");
+        col2.className = "crit__col crit__col--" + kind;
+        const h = document.createElement("h4");
+        h.textContent = label;
+        const ul = document.createElement("ul");
+        items.forEach((t) => {
+          const li = document.createElement("li");
+          li.textContent = t;
+          ul.append(li);
+        });
+        col2.append(h, ul);
+        body.append(col2);
+      });
+
+      card.append(head, body);
+      return card;
+    }));
+  }
+
   function cycle(col, i) {
     const v = verdictsFor(col);
     const current = v[i];
@@ -216,9 +270,11 @@
 
   function updateSummaryButton() {
     const ready = columns.some((c) => c.exploration && complete(c));
+    const manual = review.mode === "manual";
+    summaryBtn.hidden = !manual;
     summaryBtn.disabled = busy || !ready;
     summaryBtn.textContent = review.summary ? "Rewrite summary" : "Write my summary";
-    $("rv-summary-hint").hidden = ready || !!review.summary;
+    $("rv-summary-hint").hidden = !manual || ready || !!review.summary;
   }
 
   function renderSummary() {
@@ -312,13 +368,19 @@
       "Attached images, in order:",
       ...mapping,
       "",
-      "For each design, judge every observation: \"applied\", \"partly\" or \"not_yet\", based only on what is visible.",
-      "Add a one-sentence note per design on what it does best.",
+      "For each design:",
+      "1. Judge every observation: \"applied\", \"partly\" or \"not_yet\", based only on what is visible.",
+      "2. Write a one-sentence note on what it does best.",
+      "3. Then critique it as a senior UI/UX designer in a design review: beyond the observations, look at visual hierarchy, " +
+        "typography, spacing and alignment, color and contrast, accessibility, copy, affordances and platform conventions. " +
+        "Give 2–3 strengths and 2–3 improvements. Each point is one sentence, at most 30 words, names the specific element on screen, " +
+        "and each improvement says concretely what to change. Be direct and kind; no generic advice.",
       "Then compare the explorations and write a short summary.",
       "",
       "Reply with only JSON:",
       '{"columns": [{"label": "<label exactly as given>", "verdicts": [' + analysis.observations.length +
-        ' values in observation order], "note": string}], ' + SUMMARY_SHAPE + "}",
+        ' values in observation order], "note": string, "strengths": [string], "improvements": [string]}], ' +
+        SUMMARY_SHAPE + "}",
     ].join("\n");
 
     setStatus("Claude is reviewing " + seen.filter((x) => x.col.exploration).length + " exploration(s)…");
@@ -330,9 +392,13 @@
     });
     if (!raw || !Array.isArray(raw.columns)) return null;
 
+    const points = (x) => (Array.isArray(x) ? x.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim()).slice(0, 4) : []);
+    review.critique = review.critique || {};
     raw.columns.forEach((c, i) => {
       const target = seen[i] && seen[i].col;
-      if (!target || !Array.isArray(c.verdicts)) return;
+      if (!target || !c) return;
+      review.critique[target.id] = { strengths: points(c.strengths), improvements: points(c.improvements) };
+      if (!Array.isArray(c.verdicts)) return;
       // Keep what you set by hand.
       if (review.filledBy[target.id] === "you") return;
       review.verdicts[target.id] = analysis.observations.map((_, j) =>
@@ -400,10 +466,45 @@
   };
   const RETRYABLE = new Set(["rate_limited", "invalid_json", "empty_completion", "upstream_error"]);
 
-  const MANUAL_NOTE =
-    "This view of Claude can't send images, so mark each cell yourself: Applied, Partly or Not yet. " +
-    "Then ask Claude for a summary of your answers.";
+  // ---------- When this view can't send images ----------
+  const noImages = $("rv-noimg");
+  const manualBtn = $("rv-manual");
+  $("rv-link").textContent = window.DTC.ARTIFACT_URL.replace(/^https:\/\//, "");
+  $("rv-link").href = window.DTC.ARTIFACT_URL;
 
+  $("rv-copy").addEventListener("click", () => {
+    const done = () => ($("rv-copy").textContent = "Link copied");
+    const fallback = () => {
+      const range = document.createRange();
+      range.selectNodeContents($("rv-link"));
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      $("rv-copy").textContent = "Link selected, press Cmd+C";
+    };
+    try {
+      navigator.clipboard.writeText(window.DTC.ARTIFACT_URL).then(done, fallback);
+    } catch (_) {
+      fallback();
+    }
+  });
+
+  manualBtn.addEventListener("click", () => {
+    review.mode = "manual";
+    save();
+    showBody();
+  });
+
+  function showBody() {
+    const manual = review.mode === "manual";
+    $("rv-body").hidden = !(review.mode === "images" || manual);
+    $("rv-cell-hint").hidden = $("rv-body").hidden;
+    manualBtn.hidden = manual;
+    $("rv-manual-note").hidden = !manual;
+    updateSummaryButton();
+  }
+
+  // ---------- Running ----------
   async function run(kind, refresh) {
     if (busy) return;
     busy = true;
@@ -412,13 +513,17 @@
     try {
       const sample = await getSample();
       if (!sample) {
-        setStatus("Claude only helps here when this site is open inside Claude. Mark each cell yourself to see how your explorations compare.");
+        setStatus("Claude reviews your screens only when this site is open inside Claude.", {
+          label: "Fill in the grid myself",
+          onClick: () => { setStatus(""); review.mode = "manual"; save(); showBody(); },
+        });
         return;
       }
       if (kind === "images") {
         const limits = await imageLimitsFor(sample);
         let ok = false;
         if (limits) {
+          setStatus("Claude is looking at your screens…");
           try {
             ok = await reviewWithImages(sample, limits, refresh);
           } catch (err) {
@@ -426,18 +531,21 @@
           }
         }
         if (!ok) {
-          review.mode = "text";
-          save();
-          setStatus(MANUAL_NOTE);
+          setStatus("");
+          noImages.hidden = false;
+          showBody();
           return;
         }
+        noImages.hidden = true;
       } else {
         const ok = await summaryFromAnswers(sample);
         if (!ok) throw { code: "invalid_json" };
+        review.mode = "manual";
       }
       review.signature = signature();
       save();
-      setStatus(review.mode === "text" ? MANUAL_NOTE : "");
+      setStatus("");
+      showBody();
       renderTable();
       renderSummary();
       if (review.mode === "images") rerunBtn.hidden = false;
@@ -463,39 +571,32 @@
   // ---------- Entering the round ----------
   window.DTCPages.on("review", async () => {
     await loadAll();
-    const body = $("rv-body");
+    noImages.hidden = true;
     if (!analysis) {
-      body.hidden = true;
+      $("rv-body").hidden = true;
       setStatus("Review checks your redesign against today's analysis, so finish Compare first.", { label: "Open Compare", href: "#compare" });
       return;
     }
     if (!columns.some((c) => c.exploration)) {
-      body.hidden = true;
+      $("rv-body").hidden = true;
       setStatus("Upload at least one exploration in Redesign first.", { label: "Open Redesign", href: "#redesign" });
       return;
     }
-    body.hidden = false;
-    setStatus(review.mode === "text" ? MANUAL_NOTE : "");
+    if (review.mode === "text") review.mode = "manual"; // older saves
+    setStatus("");
     renderTable();
     renderSummary();
-    updateSummaryButton();
+    showBody();
 
-    // Ask Claude to review when the explorations changed since its last look.
-    const needsClaude = columns.some((c) => c.exploration && !review.verdicts[c.id]);
-    if (review.mode !== "text" && (needsClaude || review.signature !== signature())) {
-      run("images", review.signature && review.signature !== signature());
-    } else if (review.mode === "images") {
-      rerunBtn.hidden = false;
-    } else if (review.mode === "text") {
-      // Filled by hand in a view without images: let Claude check once a view can send them.
-      const sample = await getSample();
-      const limits = sample && typeof sample.limits === "function"
-        ? await sample.limits().catch(() => null)
-        : null;
-      if (limits && limits.images) {
-        review.mode = undefined;
-        run("images", true);
-      }
+    if (review.mode === "images") {
+      // Look again only when the explorations changed since Claude's last look.
+      const needsClaude = columns.some((c) => c.exploration && !review.verdicts[c.id]);
+      if (needsClaude || review.signature !== signature()) run("images", true);
+      else rerunBtn.hidden = false;
+    } else {
+      // Claude hasn't seen the screens yet: try now. Falls back to the
+      // open-in-browser panel when this view can't send images.
+      run("images", false);
     }
   });
 })();

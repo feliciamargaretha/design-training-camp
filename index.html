@@ -362,7 +362,7 @@
 
     <div class="review-head">
       <p class="refs-head__title">Your redesign, checked against today's analysis.</p>
-      <p class="refs-head__note">Click any cell to change it</p>
+      <p class="refs-head__note" id="rv-cell-hint" hidden>Click any cell to change it</p>
     </div>
 
     <div class="analysis__status" id="rv-status" role="status" hidden>
@@ -370,12 +370,34 @@
       <a class="btn btn--sm" id="rv-status-action" href="#compare" hidden></a>
     </div>
 
+    <section class="noimg" id="rv-noimg" aria-labelledby="rv-noimg-title" hidden>
+      <h2 class="noimg__title" id="rv-noimg-title">Claude can't see your screens in this view</h2>
+      <p>To check your explorations and review them, Claude needs to look at the images, and this view of Claude doesn't let pages send them.
+        Open this page in a web browser at claude.ai, where Claude can usually see images. Your uploads and notes are saved in this browser's storage,
+        so in a different browser or app, upload your screens again.</p>
+      <div class="noimg__link">
+        <a id="rv-link" href="https://claude.ai" target="_blank" rel="noopener"></a>
+        <button type="button" class="btn btn--sm" id="rv-copy">Copy link</button>
+      </div>
+      <button type="button" class="text-btn text-btn--inline" id="rv-manual">Or fill in the grid myself</button>
+    </section>
+
     <div id="rv-body" hidden>
+      <p class="rv-manual-note" id="rv-manual-note" hidden>You're filling in the grid yourself. Click each cell to cycle Applied, Partly and Not yet, then ask Claude for a summary of your answers.</p>
+
       <ul class="rv-tally" id="rv-tally" aria-label="Observations applied per design"></ul>
 
       <div class="rv-scroll">
         <table class="rv-table" id="rv-table"></table>
       </div>
+
+      <section class="crit-section" id="rv-critique" aria-labelledby="rv-critique-title" hidden>
+        <div class="crit-section__head">
+          <h2 id="rv-critique-title">Design review</h2>
+          <p>Claude's critique of each exploration, as a senior UI/UX designer</p>
+        </div>
+        <div class="crit-list" id="rv-critique-list"></div>
+      </section>
 
       <div class="rv-actions">
         <p class="rv-hint" id="rv-summary-hint">Mark every cell for at least one exploration to get a summary.</p>
