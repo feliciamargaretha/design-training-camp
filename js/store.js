@@ -51,10 +51,25 @@
     });
   }
 
+  // Every stored key (for History).
+  async function keys() {
+    const db = await open();
+    if (!db) return [...memory.keys()];
+    return new Promise((resolve) => {
+      try {
+        const req = db.transaction(STORE).objectStore(STORE).getAllKeys();
+        req.onsuccess = () => resolve(req.result.map(String));
+        req.onerror = () => resolve([...memory.keys()]);
+      } catch (_) {
+        resolve([...memory.keys()]);
+      }
+    });
+  }
+
   // One record per day and round, e.g. "2026-10-02:design".
   function key(round, date) {
     return window.DTC.dateKey(date) + ":" + round;
   }
 
-  window.DTCStore = { get, set, key };
+  window.DTCStore = { get, set, key, keys };
 })();

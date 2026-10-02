@@ -10,6 +10,7 @@
 
   $("rd-challenge-label").textContent = "Your challenge · " + String(challenge.id).padStart(3, "0");
   $("rd-challenge-brief").textContent = challenge.brief;
+  window.DTC.renderMeta($("rd-brief-meta"), challenge);
 
   const listEl = $("rd-explorations");
   const template = $("rd-exploration-template");

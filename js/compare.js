@@ -156,8 +156,8 @@
   // Principles hold for almost any good screen of this type; brand choices are
   // patterns some brands use and others deliberately don't.
   const FORMAT = [
-    "Separate principles from brand choices. A principle holds for almost any good " + challenge.name.toLowerCase() +
-      " screen because it serves a clear user need. A brand choice is a pattern some brands use and others deliberately " +
+    "Separate principles from brand choices. A principle holds for almost any good " + window.DTC.refNoun(challenge) +
+      " because it serves a clear user need. A brand choice is a pattern some brands use and others deliberately " +
       "don't (a stylistic, brand or business decision, or a trade-off), so it is an option, not a rule. " +
       "Write at least 7 principles and at most 3 brand choices.",
     "",
@@ -176,10 +176,10 @@
     const lines = [
       "You are a senior product designer coaching someone who is training their visual design eye.",
       "",
-      "Today's brief: " + challenge.brief,
+      "Today's brief: " + window.DTC.briefLine(challenge),
       "",
       "Attached images, in order:",
-      ...refs.map((r, i) => "- Image " + (i + 1) + ": " + r.appName + " (a real " + challenge.name.toLowerCase() + " screen from Mobbin)"),
+      ...refs.map((r, i) => "- Image " + (i + 1) + ": " + r.appName + " (a real " + window.DTC.refNoun(challenge) + " from Mobbin)"),
     ];
     if (designCount) {
       const first = refs.length + 1;
@@ -217,13 +217,13 @@
     return [
       "You are a senior product designer coaching someone who is training their visual design eye.",
       "",
-      "Today's brief: " + challenge.brief,
-      "The learner has just studied real " + challenge.name.toLowerCase() + " screens on Mobbin from: " +
+      "Today's brief: " + window.DTC.briefLine(challenge),
+      "The learner has just studied real " + window.DTC.refNoun(challenge) + "s on Mobbin from: " +
         refs.map((r) => r.appName).join(", ") + ".",
       "You cannot see those screens or the learner's design.",
       "",
-      "Write exactly " + COUNT + " observations: the design decisions that make strong " + challenge.name.toLowerCase() +
-        " screens work, phrased so the learner can check each one against the screens they studied. " +
+      "Write exactly " + COUNT + " observations: the design decisions that make strong " + window.DTC.refNoun(challenge) +
+        "s work, phrased so the learner can check each one against the screens they studied. " +
         "Be concrete about layout and hierarchy, typography, spacing, color, copy and interaction. " +
         "Do not claim what any specific app's screen shows.",
       "",
@@ -335,14 +335,14 @@
     const readings = [];
     for (let k = 0; k < jobs.length; k++) {
       setStatus("Reading the screens (" + (k + 1) + " of " + jobs.length + ")…");
-      readings.push("### " + jobs[k].label + (jobs[k].ref ? " (a real " + challenge.name.toLowerCase() + " screen from Mobbin)" : "") +
+      readings.push("### " + jobs[k].label + (jobs[k].ref ? " (a real " + window.DTC.refNoun(challenge) + " from Mobbin)" : "") +
         "\n" + (await window.DTCReader.describe(jobs[k].key, jobs[k].blob, challenge.platform)));
     }
     const intent = design && design.intent;
     const prompt = [
       "You are a senior product designer coaching someone who is training their visual design eye.",
       "",
-      "Today's brief: " + challenge.brief,
+      "Today's brief: " + window.DTC.briefLine(challenge),
       "",
       "You can't see the screens. Instead, the page read each screenshot for you: the text on screen (by OCR, so a word " +
         "may be misread), its position, height, colour, contrast and a rough weight, plus background bands, palette, " +

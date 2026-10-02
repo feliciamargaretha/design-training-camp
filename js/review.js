@@ -663,7 +663,7 @@
     return [
       "You are a senior product designer reviewing a learner's redesign in a visual design practice exercise.",
       "",
-      "Today's brief: " + challenge.brief,
+      "Today's brief: " + window.DTC.briefLine(challenge),
       "",
       "Earlier, the learner studied reference screens and got these " + analysis.observations.length + " observations:",
       observationList(),
@@ -806,7 +806,7 @@
       const intro = [
         "You are a senior product designer reviewing how widely a learner explored in a visual design practice exercise.",
         "",
-        "Today's brief: " + challenge.brief,
+        "Today's brief: " + window.DTC.briefLine(challenge),
         "",
       ];
       const task = [...rangeTask(), "", 'Reply with only JSON: {"range": {"verdict", "summary", "shared", "untried", ' +
@@ -894,7 +894,7 @@
       "You are a senior product designer coaching a learner in a visual design practice exercise.",
       "You cannot see their screens. Work only from their self-assessment below.",
       "",
-      "Today's brief: " + challenge.brief,
+      "Today's brief: " + window.DTC.briefLine(challenge),
       "",
       "Observations from their study of reference screens:",
       observationList(),

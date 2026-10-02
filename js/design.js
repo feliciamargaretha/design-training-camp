@@ -13,6 +13,7 @@
 
   $("challenge-label").textContent = "Your challenge · " + String(challenge.id).padStart(3, "0");
   $("challenge-brief").textContent = challenge.brief;
+  window.DTC.renderMeta($("brief-meta"), challenge);
 
   function save() {
     clearTimeout(saveTimer);

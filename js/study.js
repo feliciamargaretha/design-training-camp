@@ -40,7 +40,7 @@
       btn.className = "ref__shot";
       const img = document.createElement("img");
       img.src = s.image;
-      img.alt = s.appName + " " + challenge.name.toLowerCase() + " screen";
+      img.alt = s.appName + " " + window.DTC.refNoun(challenge);
       btn.append(img);
       btn.addEventListener("click", () => openLightbox(s));
       const app = document.createElement("p");
@@ -68,7 +68,7 @@
           $("refs-notice").textContent = notice;
           $("refs-notice").hidden = false;
         }
-        $("refs-title").textContent = numberWord(screens.length) + " " + challenge.name.toLowerCase() + " screens. Plenty to notice.";
+        $("refs-title").textContent = numberWord(screens.length) + " " + window.DTC.refNoun(challenge) + "s. Plenty to notice.";
         $("refs-note").textContent = challenge.name + " references · Click to enlarge";
         renderScreens(screens);
       } else {
@@ -86,7 +86,7 @@
   const lightbox = $("lightbox");
   function openLightbox(s) {
     $("lightbox-img").src = s.image;
-    $("lightbox-img").alt = s.appName + " " + challenge.name.toLowerCase() + " screen";
+    $("lightbox-img").alt = s.appName + " " + window.DTC.refNoun(challenge);
     $("lightbox-app").textContent = s.appName;
     $("lightbox-link").href = s.url;
     lightbox.showModal();

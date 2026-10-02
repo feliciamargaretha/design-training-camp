@@ -7,7 +7,6 @@
 // artifact frame can't load images from mobbin.com.
 (function () {
   const SERVER = "Mobbin";
-  const TOOL = "search_screens";
   const COUNT = 5;
 
   const MESSAGES = {
@@ -19,46 +18,56 @@
     blocked_by_policy: "Your organization blocks Mobbin searches from pages like this one.",
     approval_required: "Your organization requires approval for each Mobbin search, which this page can't ask for.",
     server_unavailable: "Mobbin didn't answer. Reload in a minute to try again.",
-    empty: "Mobbin found no screens for today's brief.",
+    empty: "Mobbin found no references for today's brief.",
   };
 
   function queryFor(challenge) {
-    return challenge.brief.replace(/^Design (the |a |an )?/i, "").replace(/\.$/, "");
+    return challenge.query || challenge.brief.replace(/^Design (the |a |an )?/i, "").replace(/\.$/, "");
   }
 
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
   async function callMobbin(mcp, challenge) {
+    // Landing page sections use section search; screens use screen search.
+    // Ask for a few extra: results can repeat the same app or site.
+    const sections = challenge.tool === "search_sections";
+    const tool = sections ? "search_sections" : "search_screens";
     const input = {
       query: queryFor(challenge),
-      platform: challenge.platform,
-      limit: COUNT,
-      mode: "deep",
+      limit: COUNT + 3,
       image_format: "jpg",
       output_destination: "code",
       task_intent: "Show real reference screens for a daily UI design practice challenge.",
     };
+    if (!sections) {
+      input.platform = challenge.platform;
+      input.mode = "deep";
+    }
     const opts = { cache: { staleTime: 300000, gcTime: 86400000 } };
     try {
-      return await mcp.callTool(SERVER, TOOL, input, opts);
+      return await mcp.callTool(SERVER, tool, input, opts);
     } catch (err) {
       if (!err || !err.retryable) throw err;
       await wait((err.retryAfterMs || 1500) + Math.random() * 1000);
-      return mcp.callTool(SERVER, TOOL, input, opts);
+      return mcp.callTool(SERVER, tool, input, opts);
     }
   }
 
   function toScreens(result) {
     const payload = result.payload || {};
     const images = (result.content || []).filter((b) => b.type === "image");
-    return (payload.screens || [])
+    const seen = new Set();
+    return (payload.screens || payload.sections || [])
       .map((s, i) => ({
         id: s.id,
-        appName: s.app_name || "Unknown app",
+        appName: s.app_name || s.site_name || "Unknown app",
         url: s.mobbin_url || "https://mobbin.com",
         image: images[i] ? "data:" + images[i].mimeType + ";base64," + images[i].data : null,
       }))
-      .filter((s) => s.image);
+      .filter((s) => s.image)
+      // One reference per app or site, so the five show five different takes.
+      .filter((s) => !seen.has(s.appName) && seen.add(s.appName))
+      .slice(0, COUNT);
   }
 
   // One search per page load, shared by the start page and Study.

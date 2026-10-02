@@ -9,10 +9,23 @@ A little practice, every day. A static site for training your visual design eye 
 5. **Review** (no timer). Check your original design and each exploration against the
    observations, then get a summary: strongest exploration, what improved, what to practice next.
 
+## Daily briefs
+
+`js/challenges.js` builds one brief per day from curated lists, seeded by the date so a day
+always gets the same brief. Days rotate between a B2C mobile screen (1–2 screens), a B2B
+desktop screen and a landing page section (hero, features, pricing, FAQ…), each with an
+industry, light or dark mode and a visual style. Landing page sections pull references with
+Mobbin's section search; screens use screen search.
+
+## History
+
+`#history` lists every day with saved work. Opening a past day remembers that date for the
+browser tab and reloads, so every round shows that day's work; a banner leads back to today.
+
 ## How it's built
 
 One page (`index.html`) holds every round; the URL hash picks which one shows
-(`#design`, `#study`, `#compare`, `#redesign`, `#review`). Each round's code lives in `js/`. Your uploads,
+(`#design`, `#study`, `#compare`, `#redesign`, `#review`, `#history`). Each round's code lives in `js/`. Your uploads,
 notes and today's analysis stay in your browser (IndexedDB), never on a server.
 
 ## Run locally

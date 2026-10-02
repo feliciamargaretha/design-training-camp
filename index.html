@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Design Training Camp</title>
-  <meta name="description" content="A little practice, every day. Design, study, compare, redesign.">
+  <meta name="description" content="A little practice, every day. Design, study, compare, redesign, review.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
@@ -14,7 +14,10 @@
   <main class="frame" data-page="home">
     <header class="topbar">
       <p class="eyebrow">A little practice. Every day.</p>
-      <p class="pill">Your pace · 5 rounds · 1 better designer</p>
+      <div class="topbar__right">
+        <a class="text-link" href="#history">History</a>
+        <p class="pill">Your pace · 5 rounds · 1 better designer</p>
+      </div>
     </header>
 
     <section class="hero">
@@ -29,11 +32,11 @@
           <a class="btn" href="#design" id="start">Start today's challenge</a>
           <span class="hint">Your daily creative workout</span>
         </div>
-        <p class="brief" id="brief" hidden>
-          Today's brief: <strong id="brief-name"></strong>
-          <span aria-hidden="true">·</span>
-          <a id="brief-link" href="https://mobbin.com" target="_blank" rel="noopener">References on Mobbin ↗</a>
-        </p>
+        <div class="brief" id="brief" hidden>
+          <p class="brief__label"><span id="brief-label">Today's brief</span> · <span id="brief-number"></span></p>
+          <p class="brief__text" id="brief-text"></p>
+          <div class="brief-meta" id="brief-meta"></div>
+        </div>
         <p class="brief brief--status" id="brief-status" hidden></p>
       </div>
 
@@ -107,7 +110,8 @@
     </div>
 
     <p class="eyebrow" data-el="challenge-label">Your challenge</p>
-    <p class="challenge" data-el="challenge-brief">Design today's screen.</p>
+    <p class="challenge challenge--with-meta" data-el="challenge-brief">Design today's screen.</p>
+    <div class="brief-meta brief-meta--page" data-el="brief-meta"></div>
 
     <section class="workspace" data-el="workspace" aria-label="Your design">
       <div class="toolbar">
@@ -275,7 +279,8 @@
     </div>
 
     <p class="eyebrow" id="rd-challenge-label">Your challenge</p>
-    <p class="challenge" id="rd-challenge-brief">Design today's screen.</p>
+    <p class="challenge challenge--with-meta" id="rd-challenge-brief">Design today's screen.</p>
+    <div class="brief-meta brief-meta--page" id="rd-brief-meta"></div>
 
     <section class="carry" id="rd-carry" aria-labelledby="rd-carry-title" hidden>
       <div class="carry__head">
@@ -465,6 +470,24 @@
     </div>
   </main>
 
+  <main class="frame" data-page="history" hidden>
+    <header class="topbar">
+      <a class="eyebrow eyebrow--link" href="#">← Design training camp</a>
+      <p class="pill" id="hist-count">Your practice</p>
+    </header>
+
+    <div class="round-title">
+      <h1 class="round-title__name">History</h1>
+    </div>
+    <p class="hist-lede">Every day you practised. Open a day to see all its rounds, or finish what you started.</p>
+
+    <ol class="hist" id="hist-list" aria-live="polite"></ol>
+    <div class="analysis__status" id="hist-empty" hidden>
+      <p>No past days yet. Your work is saved in this browser as you go, and every day you practise shows up here.</p>
+      <a class="btn btn--sm" href="#design">Start today's challenge</a>
+    </div>
+  </main>
+
   <dialog class="lightbox" id="lightbox">
     <button type="button" class="lightbox__close" id="lightbox-close" aria-label="Close">×</button>
     <img id="lightbox-img" alt="">
@@ -499,6 +522,7 @@
   <script src="js/timer.js"></script>
   <script src="js/references.js"></script>
   <script src="js/screen-reader.js"></script>
+  <script src="js/day.js"></script>
   <script src="js/landing.js"></script>
   <script src="js/workspace.js"></script>
   <script src="js/design.js"></script>
@@ -506,5 +530,6 @@
   <script src="js/compare.js"></script>
   <script src="js/redesign.js"></script>
   <script src="js/review.js"></script>
+  <script src="js/history.js"></script>
 </body>
 </html>
