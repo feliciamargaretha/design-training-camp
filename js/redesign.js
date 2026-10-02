@@ -181,6 +181,12 @@
       title.className = "carry__title";
       title.textContent = o.title;
       li.append(num, title);
+      if (o.kind === "choice") {
+        const kind = document.createElement("span");
+        kind.className = "carry__tag carry__tag--choice";
+        kind.textContent = "Brand choice";
+        li.append(kind);
+      }
       const tag = document.createElement("span");
       tag.className = "carry__tag";
       if (o.yourDesign === "no") {

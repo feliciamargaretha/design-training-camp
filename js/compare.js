@@ -53,12 +53,19 @@
 
   const VERDICT = { yes: "Already in your design", partly: "Partly in your design", no: "Missing from your design" };
 
+  function countLabel(observations) {
+    const choices = observations.filter((o) => o.kind === "choice").length;
+    const principles = observations.length - choices;
+    return principles + (principles === 1 ? " principle" : " principles") +
+      (choices ? " · " + choices + (choices === 1 ? " brand choice" : " brand choices") : "");
+  }
+
   function renderAnalysis() {
     $("cmp-headline").textContent = analysis.headline;
     $("cmp-meta").textContent = "Claude's analysis · " +
       (analysis.mode === "text" ? "Written from the brief"
         : analysis.refCount + " reference screens" + (analysis.mode === "read" ? ", read by the page" : "")) +
-      " · " + analysis.observations.length + " observations";
+      " · " + countLabel(analysis.observations);
     list.replaceChildren(...analysis.observations.map((o, i) => {
       const li = document.createElement("li");
       li.className = "obs";
@@ -76,6 +83,12 @@
       const body = document.createElement("p");
       body.className = "obs__body";
       body.textContent = o.body;
+      if (o.kind === "choice") {
+        const kind = document.createElement("span");
+        kind.className = "obs__kind";
+        kind.textContent = "Brand choice";
+        title.append(" ", kind);
+      }
       text.append(title, body);
 
       if (o.yourDesign && VERDICT[o.yourDesign]) {
@@ -140,12 +153,22 @@
     mediaTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
   };
 
+  // Principles hold for almost any good screen of this type; brand choices are
+  // patterns some brands use and others deliberately don't.
   const FORMAT = [
+    "Separate principles from brand choices. A principle holds for almost any good " + challenge.name.toLowerCase() +
+      " screen because it serves a clear user need. A brand choice is a pattern some brands use and others deliberately " +
+      "don't (a stylistic, brand or business decision, or a trade-off), so it is an option, not a rule. " +
+      "Write at least 7 principles and at most 3 brand choices.",
+    "",
     "Each observation has:",
-    '- "title": an imperative of at most 7 words, e.g. "Make the next step unmistakable"',
+    '- "kind": "principle" or "choice"',
+    '- "title": at most 7 words. For a principle, an imperative, e.g. "Make the next step unmistakable". ' +
+      'For a choice, an option, e.g. "Consider showing the total on the button"',
+    '- for a choice, the body names the trade-off and when the option fits',
   ];
   const JSON_SHAPE =
-    'Reply with only JSON: {"headline": string, "observations": [{"title", "body", "yourDesign", "yourDesignNote"}]}';
+    'Reply with only JSON: {"headline": string, "observations": [{"kind", "title", "body", "yourDesign", "yourDesignNote"}]}';
   const HEADLINE =
     'Also write "headline": "A closer look at <the screen type>." in sentence case, e.g. "A closer look at checkout."';
 
@@ -222,6 +245,7 @@
       .filter((o) => o && typeof o.title === "string" && typeof o.body === "string")
       .slice(0, COUNT)
       .map((o) => ({
+        kind: o.kind === "choice" ? "choice" : "principle",
         title: o.title.trim(),
         body: o.body.trim(),
         yourDesign: judged && ["yes", "partly", "no"].includes(o.yourDesign) ? o.yourDesign : null,
@@ -462,8 +486,9 @@
     analysis = saved;
     showAnalysis();
 
-    // A brief-only analysis (from before the page could read screenshots, or
-    // when reading failed): redo it from the screens.
-    if (saved.mode === "text") runAnalysis(true);
+    // Redo it once when it was written from the brief only (before the page
+    // could read screenshots, or when reading failed), or before principles
+    // and brand choices were told apart.
+    if (saved.mode === "text" || !saved.observations.some((o) => o.kind)) runAnalysis(true);
   });
 })();

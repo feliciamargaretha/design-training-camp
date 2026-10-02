@@ -390,7 +390,7 @@
       <section class="crit-section" id="rv-critique" aria-labelledby="rv-critique-title" hidden>
         <div class="crit-section__head">
           <h2 id="rv-critique-title">Design review</h2>
-          <p>Claude's critique of each exploration, as a senior UI/UX designer</p>
+          <p>Claude's take on each exploration's visual direction, as a senior designer</p>
         </div>
         <div class="crit-list" id="rv-critique-list"></div>
       </section>
@@ -430,6 +430,28 @@
     <button type="button" class="lightbox__close" id="lightbox-close" aria-label="Close">×</button>
     <img id="lightbox-img" alt="">
     <p class="lightbox__caption"><span id="lightbox-app"></span><a id="lightbox-link" href="https://mobbin.com" target="_blank" rel="noopener">Open on Mobbin ↗</a></p>
+  </dialog>
+
+  <dialog class="annot" id="annot" aria-labelledby="annot-title">
+    <button type="button" class="lightbox__close" id="annot-close" aria-label="Close">×</button>
+    <div class="annot__layout">
+      <div class="annot__stage">
+        <div class="annot__frame">
+          <img id="annot-img" alt="">
+          <div class="annot__pins" id="annot-pins"></div>
+        </div>
+        <div class="annot__nav" id="annot-nav">
+          <button type="button" class="text-btn" id="annot-prev">← Previous</button>
+          <span id="annot-count"></span>
+          <button type="button" class="text-btn" id="annot-next">Next →</button>
+        </div>
+      </div>
+      <div class="annot__side">
+        <h2 class="annot__title" id="annot-title"></h2>
+        <p class="annot__overall" id="annot-overall" hidden></p>
+        <ol class="annot__list" id="annot-list"></ol>
+      </div>
+    </div>
   </dialog>
 
   <script src="js/challenges.js"></script>

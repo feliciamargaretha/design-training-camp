@@ -14,6 +14,8 @@
 
   const VALUES = ["applied", "partly", "not_yet"];
   const LABELS = { applied: "Applied", partly: "Partly", not_yet: "Not yet" };
+  // Brand choices are options: the grid records whether a design uses one.
+  const CHOICE_LABELS = { applied: "Used", partly: "Partly used", not_yet: "Not used" };
   const FROM_COMPARE = { yes: "applied", partly: "partly", no: "not_yet" };
 
   const status = $("rv-status");
@@ -82,8 +84,12 @@
     }
   }
 
+  // Changes when the screens or Compare's observations change, so Claude looks again.
   function signature() {
-    return JSON.stringify(columns.map((c) => [c.id, c.screens.map((s) => s.id)]));
+    return JSON.stringify([
+      analysis ? analysis.observations.map((o) => o.title) : [],
+      columns.map((c) => [c.id, c.screens.map((s) => s.id)]),
+    ]);
   }
 
   function save() {
@@ -136,15 +142,22 @@
       th.innerHTML = '<span class="rv-obs__num"></span><span class="rv-obs__title"></span>';
       th.children[0].textContent = String(i + 1).padStart(2, "0");
       th.children[1].textContent = o.title;
+      if (isChoice(o)) {
+        const kind = document.createElement("span");
+        kind.className = "obs__kind";
+        kind.textContent = "Brand choice";
+        th.children[1].append(" ", kind);
+      }
       tr.append(th);
       columns.forEach((col) => {
         const td = document.createElement("td");
         const value = verdictsFor(col)[i];
+        const labels = isChoice(o) ? CHOICE_LABELS : LABELS;
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "rv-cell" + (value ? " rv-cell--" + value : "");
-        btn.textContent = value ? LABELS[value] : "—";
-        btn.setAttribute("aria-label", col.label + ", " + o.title + ": " + (value ? LABELS[value] : "not checked") + ". Click to change.");
+        btn.className = "rv-cell" + (value ? " rv-cell--" + (isChoice(o) ? "choice" : value) : "");
+        btn.textContent = value ? labels[value] : "—";
+        btn.setAttribute("aria-label", col.label + ", " + o.title + ": " + (value ? labels[value] : "not checked") + ". Click to change.");
         btn.addEventListener("click", () => cycle(col, i));
         td.append(btn);
         tr.append(td);
@@ -179,7 +192,8 @@
   function renderTally() {
     const tally = $("rv-tally");
     tally.replaceChildren(...columns.map((col) => {
-      const v = verdictsFor(col);
+      // Only principles count; brand choices are options.
+      const v = verdictsFor(col).filter((_, i) => !isChoice(analysis.observations[i]));
       const applied = v.filter((x) => x === "applied").length;
       const partly = v.filter((x) => x === "partly").length;
       const li = document.createElement("li");
@@ -188,11 +202,11 @@
       name.textContent = col.label;
       const score = document.createElement("span");
       score.className = "rv-tally__score";
-      score.textContent = applied + " applied" + (partly ? " · " + partly + " partly" : "");
+      score.textContent = applied + " of " + v.length + " principles" + (partly ? " · " + partly + " partly" : "");
       const bar = document.createElement("span");
       bar.className = "rv-tally__bar";
       bar.innerHTML = '<span class="rv-tally__fill"></span><span class="rv-tally__part"></span>';
-      const total = analysis.observations.length;
+      const total = Math.max(1, v.length);
       bar.children[0].style.width = (applied / total) * 100 + "%";
       bar.children[1].style.width = (partly / total) * 100 + "%";
       li.append(name, score, bar);
@@ -200,58 +214,204 @@
     }));
   }
 
+  // ---------- Design review cards ----------
+  // Points are numbered across a design: strengths first, then improvements.
+  function numberedPoints(c) {
+    return [
+      ...(c.strengths || []).map((p) => ({ ...(typeof p === "string" ? { text: p } : p), kind: "good" })),
+      ...(c.improvements || []).map((p) => ({ ...(typeof p === "string" ? { text: p } : p), kind: "improve" })),
+    ].map((p, n) => ({ ...p, n: n + 1 }));
+  }
+
+  function screenUrl(screen) {
+    const url = URL.createObjectURL(screen.blob);
+    urls.push(url);
+    return url;
+  }
+
   function renderCritique() {
     const section = $("rv-critique");
-    const cols = columns.filter((c) => c.exploration && review.critique && review.critique[c.id] &&
-      (review.critique[c.id].strengths.length || review.critique[c.id].improvements.length));
+    const cols = columns.filter((c) => {
+      const crit = c.exploration && review.critique && review.critique[c.id];
+      return crit && (crit.overall || (crit.strengths || []).length || (crit.improvements || []).length);
+    });
     section.hidden = !cols.length;
     if (!cols.length) return;
     $("rv-critique-list").replaceChildren(...cols.map((col) => {
       const c = review.critique[col.id];
+      const points = numberedPoints(c);
       const card = document.createElement("article");
       card.className = "crit";
 
       const head = document.createElement("header");
       head.className = "crit__head";
-      const thumb = document.createElement("img");
-      const url = URL.createObjectURL(col.screens[0].blob);
-      urls.push(url);
-      thumb.src = url;
-      thumb.alt = "";
-      const titles = document.createElement("div");
       const name = document.createElement("h3");
       name.className = "crit__name";
       name.textContent = col.label;
-      titles.append(name);
+      head.append(name);
       if (col.intent) {
         const intent = document.createElement("p");
         intent.className = "crit__intent";
         intent.textContent = "Intent: " + col.intent;
-        titles.append(intent);
+        head.append(intent);
       }
-      head.append(thumb, titles);
+      card.append(head);
 
+      const layout = document.createElement("div");
+      layout.className = "crit__layout";
+
+      // Screens, each opening the annotated view.
+      const shots = document.createElement("div");
+      shots.className = "crit__shots";
+      col.screens.forEach((screen, si) => {
+        const pins = points.filter((p) => p.screenId === screen.id && p.x !== null && p.x !== undefined).length;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "crit__shot";
+        btn.setAttribute("aria-label", "Open " + col.label + " screen " + (si + 1) + " with annotations");
+        const img = document.createElement("img");
+        img.src = screenUrl(screen);
+        img.alt = "";
+        btn.append(img);
+        if (pins) {
+          const badge = document.createElement("span");
+          badge.className = "crit__badge";
+          badge.textContent = pins + (pins === 1 ? " note" : " notes");
+          btn.append(badge);
+        }
+        btn.addEventListener("click", () => openAnnotations(col, si));
+        shots.append(btn);
+      });
+      const hint = document.createElement("p");
+      hint.className = "crit__hint";
+      hint.textContent = "Click a screen to see the notes on it";
+      shots.append(hint);
+
+      const text = document.createElement("div");
+      text.className = "crit__text";
+      if (c.overall) {
+        const overall = document.createElement("p");
+        overall.className = "crit__overall";
+        overall.textContent = c.overall;
+        text.append(overall);
+      }
       const body = document.createElement("div");
       body.className = "crit__body";
-      [["What's working", c.strengths, "good"], ["What to improve", c.improvements, "improve"]].forEach(([label, items, kind]) => {
-        const col2 = document.createElement("div");
-        col2.className = "crit__col crit__col--" + kind;
+      [["What's working", "good"], ["What to improve", "improve"]].forEach(([label, kind]) => {
+        const colEl = document.createElement("div");
+        colEl.className = "crit__col crit__col--" + kind;
         const h = document.createElement("h4");
         h.textContent = label;
         const ul = document.createElement("ul");
-        items.forEach((t) => {
+        points.filter((p) => p.kind === kind).forEach((p) => {
           const li = document.createElement("li");
-          li.textContent = t;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "crit__point";
+          const num = document.createElement("span");
+          num.className = "pin pin--" + kind;
+          num.textContent = p.n;
+          const t = document.createElement("span");
+          t.textContent = p.text;
+          btn.append(num, t);
+          const si = Math.max(0, col.screens.findIndex((sc) => sc.id === p.screenId));
+          btn.addEventListener("click", () => openAnnotations(col, si, p.n));
+          li.append(btn);
           ul.append(li);
         });
-        col2.append(h, ul);
-        body.append(col2);
+        colEl.append(h, ul);
+        body.append(colEl);
       });
+      text.append(body);
 
-      card.append(head, body);
+      layout.append(shots, text);
+      card.append(layout);
       return card;
     }));
   }
+
+  // ---------- Annotated screen view ----------
+  const annot = $("annot");
+  let annotState = null; // { col, index, active }
+
+  function openAnnotations(col, index, active) {
+    annotState = { col, index, active: active || null };
+    renderAnnotations();
+    if (!annot.open) annot.showModal();
+  }
+
+  function renderAnnotations() {
+    const { col, index, active } = annotState;
+    const screen = col.screens[index];
+    const points = numberedPoints(review.critique[col.id] || {});
+    $("annot-title").textContent = col.label;
+    $("annot-img").src = screenUrl(screen);
+    $("annot-img").alt = col.label + ", screen " + (index + 1);
+    $("annot-count").textContent = "Screen " + (index + 1) + " of " + col.screens.length;
+    $("annot-prev").disabled = index === 0;
+    $("annot-next").disabled = index === col.screens.length - 1;
+    $("annot-nav").hidden = col.screens.length < 2;
+    if (overallFor(col)) {
+      $("annot-overall").textContent = overallFor(col);
+      $("annot-overall").hidden = false;
+    } else {
+      $("annot-overall").hidden = true;
+    }
+
+    const pins = $("annot-pins");
+    pins.replaceChildren(...points
+      .filter((p) => p.screenId === screen.id && p.x !== null && p.x !== undefined)
+      .map((p) => {
+        const pin = document.createElement("button");
+        pin.type = "button";
+        pin.className = "pin pin--" + p.kind + " annot__pin" + (p.n === active ? " is-active" : "");
+        pin.style.left = p.x + "%";
+        pin.style.top = p.y + "%";
+        pin.textContent = p.n;
+        pin.setAttribute("aria-label", "Note " + p.n);
+        pin.addEventListener("click", () => { annotState.active = p.n; renderAnnotations(); });
+        return pin;
+      }));
+
+    const list = $("annot-list");
+    list.replaceChildren(...points.map((p) => {
+      const li = document.createElement("li");
+      const onThis = p.screenId === screen.id;
+      li.className = "annot__item" + (p.n === active ? " is-active" : "") + (onThis ? "" : " is-elsewhere");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      const num = document.createElement("span");
+      num.className = "pin pin--" + p.kind;
+      num.textContent = p.n;
+      const t = document.createElement("span");
+      t.className = "annot__text";
+      t.textContent = p.text;
+      const where = document.createElement("span");
+      where.className = "annot__where";
+      const si = col.screens.findIndex((sc) => sc.id === p.screenId);
+      where.textContent = (p.kind === "good" ? "Working" : "To improve") +
+        (!onThis && si >= 0 ? " · on screen " + (si + 1) : p.x === null || p.x === undefined ? " · whole screen" : "");
+      t.append(where);
+      btn.append(num, t);
+      btn.addEventListener("click", () => {
+        annotState.active = p.n;
+        if (!onThis && si >= 0) annotState.index = si;
+        renderAnnotations();
+      });
+      li.append(btn);
+      return li;
+    }));
+  }
+
+  function overallFor(col) {
+    const c = review.critique && review.critique[col.id];
+    return c && c.overall;
+  }
+
+  $("annot-close").addEventListener("click", () => annot.close());
+  annot.addEventListener("click", (e) => { if (e.target === annot) annot.close(); });
+  $("annot-prev").addEventListener("click", () => { annotState.index--; annotState.active = null; renderAnnotations(); });
+  $("annot-next").addEventListener("click", () => { annotState.index++; annotState.active = null; renderAnnotations(); });
 
   function cycle(col, i) {
     const v = verdictsFor(col);
@@ -310,9 +470,11 @@
     }
   }
 
+  const isChoice = (o) => o.kind === "choice";
+
   function observationList() {
     return analysis.observations
-      .map((o, i) => (i + 1) + ". " + o.title + ": " + o.body)
+      .map((o, i) => (i + 1) + ". [" + (isChoice(o) ? "brand choice" : "principle") + "] " + o.title + ": " + o.body)
       .join("\n");
   }
 
@@ -320,10 +482,11 @@
     '"summary": {"strongest": "<the exploration label, exactly as given>", ' +
     '"why": "1–2 sentences on why it is strongest", ' +
     '"improved": "1–2 sentences on what improved compared with the original design (or what to compare it with if there is no original)", ' +
-    '"next": "1–2 sentences: the one thing to practice next time"}';
+    '"next": "1–2 sentences: the one visual design skill to practice next time"}';
 
   // Pick screens within the image budget: one per column first, then extras.
   function pickImages(limits) {
+    // Returns screen objects (not just blobs) so critique points can point at them.
     const usable = columns.map((c) =>
       c.screens.filter((s) => s.blob && limits.mediaTypes.includes(s.blob.type) && s.blob.size <= limits.maxInputBytes)
     );
@@ -350,20 +513,35 @@
   }
 
   // The part of the prompt both routes share: what to judge and the reply shape.
-  function reviewTask(basis) {
+  function reviewTask(basis, reading) {
     return [
       "For each design:",
-      "1. Judge every observation: \"applied\", \"partly\" or \"not_yet\", based only on " + basis + ".",
+      "1. Judge every observation: \"applied\", \"partly\" or \"not_yet\", based only on " + basis + ". " +
+        "For a brand choice, the verdict only records whether the design uses it (applied = uses it). " +
+        "Not using a brand choice is a valid decision, never a weakness.",
       "2. Write a one-sentence note on what it does best.",
-      "3. Then critique it as a senior UI/UX designer in a design review: beyond the observations, look at visual hierarchy, " +
-        "typography, spacing and alignment, color and contrast, accessibility, copy, affordances and platform conventions. " +
-        "Give 2–3 strengths and 2–3 improvements. Each point is one sentence, at most 30 words, names the specific element on screen, " +
-        "and each improvement says concretely what to change. Be direct and kind; no generic advice.",
+      '3. Write "overall": your general take in 2–3 sentences, the way a design lead opens a critique: ' +
+        "its visual direction, what it gets right and its biggest opportunity.",
+      "4. Critique its visual design strategy as a senior UI/UX designer in a design critique: the look and feel and whether it " +
+        "suits the brief, the colour direction, the typographic character, how sections are visually designed and grouped, how the " +
+        "visual hierarchy guides the eye, whether spacing and rhythm feel deliberate and consistent" +
+        (reading ? "" : ", imagery and iconography") +
+        ", and whether the stated intent comes through visually. Talk about design decisions, not specs: no measurements, " +
+        "pixel or point values, contrast ratios or exact fixes. Say \"the spacing works: related details sit together and the " +
+        "action has room to breathe\", not \"increase the gap to 24pt\". Treat brand choices as options, not rules.",
+      "   Give 2–3 strengths and 2–3 improvements. Each point is one or two sentences, at most 35 words. " +
+        "Each improvement suggests a direction to explore.",
+      '   For each point give where it applies: "screen" is the design\'s screen number (1 = its first screen), and "x" and "y" ' +
+        "are the approximate position of the element the point is about, as a percentage (0–100) of that screen's width and height" +
+        (reading ? " (work it out from the positions and the screen size in the reading)" : "") +
+        '. Use null for x and y when the point is about the whole screen.',
       "Then compare the explorations and write a short summary.",
       "",
       "Reply with only JSON:",
       '{"columns": [{"label": "<label exactly as given>", "verdicts": [' + analysis.observations.length +
-        ' values in observation order], "note": string, "strengths": [string], "improvements": [string]}], ' +
+        ' values in observation order], "note": string, "overall": string, ' +
+        '"strengths": [{"text": string, "screen": number, "x": number|null, "y": number|null}], ' +
+        '"improvements": [{"text": string, "screen": number, "x": number|null, "y": number|null}]}], ' +
         SUMMARY_SHAPE + "}",
     ];
   }
@@ -381,14 +559,30 @@
   }
 
   // Store Claude's answer: verdicts (unless you set them by hand), notes, critique, summary.
-  function applyReview(raw, seenCols, mode) {
+  // `seen` lists, per design Claude looked at, the column and the screens it saw (in order).
+  function applyReview(raw, seen, mode) {
     if (!raw || !Array.isArray(raw.columns)) return false;
-    const points = (x) => (Array.isArray(x) ? x.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim()).slice(0, 4) : []);
+    const pct = (v) => (typeof v === "number" && isFinite(v) ? Math.max(2, Math.min(98, v)) : null);
+    const points = (list, screens) =>
+      (Array.isArray(list) ? list : [])
+        .map((p) => (typeof p === "string" ? { text: p } : p))
+        .filter((p) => p && typeof p.text === "string" && p.text.trim())
+        .slice(0, 4)
+        .map((p) => {
+          const screen = screens[(Number(p.screen) || 1) - 1] || screens[0];
+          const x = pct(p.x), y = pct(p.y);
+          return { text: p.text.trim(), screenId: screen ? screen.id : null, x: x !== null && y !== null ? x : null, y: x !== null && y !== null ? y : null };
+        });
     review.critique = review.critique || {};
     raw.columns.forEach((c, i) => {
-      const target = seenCols[i];
+      const entry = seen[i];
+      const target = entry && entry.col;
       if (!target || !c) return;
-      review.critique[target.id] = { strengths: points(c.strengths), improvements: points(c.improvements) };
+      review.critique[target.id] = {
+        overall: typeof c.overall === "string" ? c.overall.trim() : "",
+        strengths: points(c.strengths, entry.screens),
+        improvements: points(c.improvements, entry.screens),
+      };
       if (typeof c.note === "string") review.notes[target.id] = c.note.trim();
       if (!Array.isArray(c.verdicts) || review.filledBy[target.id] === "you") return;
       review.verdicts[target.id] = analysis.observations.map((_, j) =>
@@ -403,14 +597,14 @@
 
   async function reviewWithImages(sample, limits, refresh) {
     const picked = pickImages(limits);
-    const seen = columns.map((c, i) => ({ col: c, blobs: picked[i] })).filter((x) => x.blobs.length);
+    const seen = columns.map((c, i) => ({ col: c, screens: picked[i] })).filter((x) => x.screens.length);
     if (!seen.some((x) => x.col.exploration)) return null;
 
     let n = 0;
-    const mapping = seen.map(({ col, blobs }) => {
+    const mapping = seen.map(({ col, screens }) => {
       const first = n + 1;
-      n += blobs.length;
-      const range = blobs.length === 1 ? "Image " + first : "Images " + first + "–" + n;
+      n += screens.length;
+      const range = screens.length === 1 ? "Image " + first : "Images " + first + "–" + n + " (its screens 1–" + screens.length + ")";
       return "- " + range + ": " + describeColumn(col);
     });
 
@@ -419,17 +613,17 @@
       "Attached images, in order:",
       ...mapping,
       "",
-      ...reviewTask("what is visible"),
+      ...reviewTask("what is visible", false),
     ].join("\n");
 
     setStatus("Claude is reviewing " + seen.filter((x) => x.col.exploration).length + " exploration(s)…");
     const raw = await sample.json(prompt, {
-      images: seen.flatMap((x) => x.blobs),
+      images: seen.flatMap((x) => x.screens.map((s) => s.blob)),
       modelTier: "default",
       cache: refresh ? { ...CACHE, refresh: true } : CACHE,
       onText: () => setStatus("Writing the review…"),
     });
-    return applyReview(raw, seen.map((x) => x.col), "images");
+    return applyReview(raw, seen, "images");
   }
 
   // When this view can't send images: the page reads each screenshot (text,
@@ -458,7 +652,7 @@
       "",
       ...columns.map((col) => "### " + describeColumn(col) + "\n" + (readings.get(col.id) || []).join("\n\n")),
       "",
-      ...reviewTask("what the readings show"),
+      ...reviewTask("what the readings show", true),
     ].join("\n");
 
     setStatus("Claude is reviewing " + columns.filter((c) => c.exploration).length + " exploration(s)…");
@@ -467,7 +661,7 @@
       cache: refresh ? { ...CACHE, refresh: true } : CACHE,
       onText: () => setStatus("Writing the review…"),
     });
-    return applyReview(raw, columns, "read");
+    return applyReview(raw, columns.map((col) => ({ col, screens: col.screens.slice(0, SCREENS_PER_DESIGN) })), "read");
   }
 
   async function summaryFromAnswers(sample) {
@@ -638,7 +832,9 @@
 
     if (review.mode === "images" || review.mode === "read") {
       // Look again only when the explorations changed since Claude's last look.
-      const needsClaude = columns.some((c) => c.exploration && !review.verdicts[c.id]);
+      const needsClaude = columns.some((c) => c.exploration && !review.verdicts[c.id]) ||
+        // Reviews from before the overall take and annotated points.
+        columns.some((c) => c.exploration && !(review.critique && review.critique[c.id] && "overall" in review.critique[c.id]));
       if (needsClaude || review.signature !== signature()) run("images", true);
       else rerunBtn.hidden = false;
     } else {
