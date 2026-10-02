@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design Training Camp</title>
+  <meta name="description" content="A little practice, every day. Design, study, compare, redesign.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main class="frame">
+    <header class="topbar">
+      <p class="eyebrow">A little practice. Every day.</p>
+      <p class="pill">Your pace · 4 rounds · 1 better designer</p>
+    </header>
+
+    <section class="hero">
+      <div class="hero__copy">
+        <h1 class="hero__title">Design training camp<span class="dot">.</span></h1>
+        <p class="hero__lede">
+          Train your eye. Trust your instincts.<br>
+          One challenge, four focused rounds.<br>
+          A stronger designer on the other side.
+        </p>
+        <div class="hero__actions">
+          <a class="btn" href="design.html" id="start">Start today's challenge</a>
+          <span class="hint">Your daily creative workout</span>
+        </div>
+        <p class="brief" id="brief" hidden>
+          Today's brief: <strong id="brief-name"></strong>
+          <span aria-hidden="true">·</span>
+          <a id="brief-link" href="https://mobbin.com" target="_blank" rel="noopener">References on Mobbin ↗</a>
+        </p>
+      </div>
+
+      <div class="badge" aria-hidden="true">
+        <div class="ring ring--outer"></div>
+        <div class="ring ring--inner"></div>
+        <div class="badge__core">
+          <span class="badge__aa">Aa</span>
+          <span class="badge__label">Practice</span>
+        </div>
+        <div class="tile tile--lime">
+          <svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/></svg>
+        </div>
+        <div class="tile tile--lilac">
+          <svg viewBox="0 0 24 24"><path d="M9 9V6a3 3 0 1 0-3 3h3Zm0 0v6m0-6h6m-6 6H6a3 3 0 1 0 3 3v-3Zm0 0h6m0-6V6a3 3 0 1 1 3 3h-3Zm0 0v6m0 0v3a3 3 0 1 0 3-3h-3Z"/></svg>
+        </div>
+        <div class="tile tile--peach">
+          <svg viewBox="0 0 24 24"><path d="M6 18 18 6M9 6h9v9"/></svg>
+        </div>
+        <div class="tile tile--fog">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M4 12a8 8 0 0 0 16 0Z" class="fill"/></svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="routine" aria-labelledby="routine-title">
+      <div class="routine__head">
+        <h2 id="routine-title">The routine</h2>
+        <p>Small reps. A bigger design vocabulary.</p>
+      </div>
+      <ol class="rounds">
+        <li class="round round--active">
+          <div class="round__meta"><span>01</span><span>No timer</span></div>
+          <h3>Design</h3>
+          <p>Start with a blank canvas in Figma. Just you and your instincts. Upload your screen.</p>
+        </li>
+        <li class="round">
+          <div class="round__meta"><span>02</span><span>10 min</span></div>
+          <h3>Study</h3>
+          <p>Look at great interfaces on Mobbin. Write down what you notice.</p>
+        </li>
+        <li class="round">
+          <div class="round__meta"><span>03</span><span>10 min</span></div>
+          <h3>Compare</h3>
+          <p>See the analysis. Discover your blind spots.</p>
+        </li>
+        <li class="round">
+          <div class="round__meta"><span>04</span><span>No timer</span></div>
+          <h3>Redesign</h3>
+          <p>Put your new perspective into practice. Upload the new version.</p>
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <script src="js/challenges.js"></script>
+  <script src="js/landing.js"></script>
+</body>
+</html>
