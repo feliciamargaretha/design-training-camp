@@ -17,6 +17,10 @@ python3 -m http.server 8000
 
 ## Mobbin
 
-Mobbin has no public API, so each daily brief in `js/challenges.js` maps to a Mobbin
-screen pattern and deep-links into Mobbin search (you need to be signed in to Mobbin).
-Change the URL format in `mobbinUrl()` if Mobbin changes its links.
+Reference screens come from the Mobbin connector (`search_screens`), so they only
+load when the site runs as a claude.ai artifact with Mobbin connected. The start
+page fetches today's references and keeps them in the browser for Study and
+Compare. Anywhere else, the Study round falls back to a link into Mobbin search
+(`mobbinUrl()` in `js/challenges.js`).
+
+Mobbin screenshots are only fetched at runtime and never committed to this repo.

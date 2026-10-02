@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Study · Design Training Camp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main class="frame">
+    <header class="topbar">
+      <a class="eyebrow eyebrow--link" href="design.html">← Back to Design</a>
+      <p class="pill" id="timer-state">Round 2 of 4 · 10 min</p>
+    </header>
+
+    <div class="round-title">
+      <button type="button" class="round-title__num round-title__timer" id="timer" aria-label="Pause timer">10:00</button>
+      <span class="round-title__rule" aria-hidden="true"></span>
+      <h1 class="round-title__name">Study</h1>
+    </div>
+
+    <div class="refs-head">
+      <p class="refs-head__title" id="refs-title">Today's references. Plenty to notice.</p>
+      <p class="refs-head__note" id="refs-note">Finding references on Mobbin…</p>
+    </div>
+
+    <ul class="refs" id="refs" aria-live="polite"></ul>
+
+    <p class="refs-notice" id="refs-notice" hidden></p>
+
+    <div class="refs-empty" id="refs-empty" hidden>
+      <p id="refs-empty-text">Mobbin isn't connected here yet.</p>
+      <a class="btn btn--sm" id="refs-mobbin" href="https://mobbin.com" target="_blank" rel="noopener">Browse today's pattern on Mobbin ↗</a>
+    </div>
+
+    <section class="notice" aria-labelledby="notice-title">
+      <div class="notice__head">
+        <h2 id="notice-title">What do you notice?</h2>
+        <p>Your observations first. Analysis comes next.</p>
+      </div>
+      <div class="notice__cols">
+        <fieldset class="notice__col" data-kind="patterns">
+          <legend><span class="notice__sign">+</span> 3 patterns</legend>
+          <label><span>1</span><input id="patterns-1" type="text" placeholder="A pattern you see across screens…"></label>
+          <label><span>2</span><input id="patterns-2" type="text" placeholder="Another one…"></label>
+          <label><span>3</span><input id="patterns-3" type="text" placeholder="And one more…"></label>
+        </fieldset>
+        <fieldset class="notice__col" data-kind="dos">
+          <legend><span class="notice__sign">+</span> 3 do's</legend>
+          <label><span>1</span><input id="dos-1" type="text" placeholder="Something worth borrowing…"></label>
+          <label><span>2</span><input id="dos-2" type="text" placeholder="Another one…"></label>
+          <label><span>3</span><input id="dos-3" type="text" placeholder="And one more…"></label>
+        </fieldset>
+        <fieldset class="notice__col" data-kind="donts">
+          <legend><span class="notice__sign">−</span> 3 don'ts</legend>
+          <label><span>1</span><input id="donts-1" type="text" placeholder="Something you would avoid…"></label>
+          <label><span>2</span><input id="donts-2" type="text" placeholder="Another one…"></label>
+          <label><span>3</span><input id="donts-3" type="text" placeholder="And one more…"></label>
+        </fieldset>
+      </div>
+      <div class="notice__foot">
+        <a class="btn btn--sm" href="compare.html">Continue to Compare →</a>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="lightbox" id="lightbox">
+    <button type="button" class="lightbox__close" id="lightbox-close" aria-label="Close">×</button>
+    <img id="lightbox-img" alt="">
+    <p class="lightbox__caption"><span id="lightbox-app"></span><a id="lightbox-link" href="https://mobbin.com" target="_blank" rel="noopener">Open on Mobbin ↗</a></p>
+  </dialog>
+
+  <script src="js/challenges.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/references.js"></script>
+  <script src="js/study.js"></script>
+</body>
+</html>
