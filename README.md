@@ -44,6 +44,7 @@ Some Claude accounts and views can't send images to Claude. There, the page read
 screenshot itself (`js/screen-reader.js`): the text via Tesseract.js OCR, plus positions,
 text sizes, colours, contrast, background bands, picture areas, alignment and spacing. Claude
 analyzes and reviews that reading instead of the image. Tesseract.js and its English data are
-vendored in `vendor/tesseract/` (Apache-2.0) so nothing loads from other sites. If the reader
+vendored in `vendor/tesseract/` (Apache-2.0) so nothing loads from other sites; the language
+data is named `.gz.wasm` because Claude artifacts don't serve `.gz` files (`worker.js` maps the request). If the reader
 can't start, Compare falls back to an analysis of the brief and Review lets you fill in the
 grid yourself.

@@ -29,7 +29,8 @@
       workerPromise = (async () => {
         await loadScript(abs(VENDOR + "tesseract.min.js"));
         const worker = await window.Tesseract.createWorker("eng", 1, {
-          workerPath: abs(VENDOR + "worker.min.js"),
+          workerPath: abs(VENDOR + "worker.js"),
+          workerBlobURL: false,
           corePath: abs(VENDOR + "tesseract-core-simd-lstm.wasm.js"),
           langPath: abs(VENDOR.replace(/\/$/, "")),
           gzip: true,
