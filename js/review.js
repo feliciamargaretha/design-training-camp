@@ -221,11 +221,33 @@
   const RELATIONS = { new_direction: "New direction", variation: "Variation", reskin: "Reskin" };
   const DELIVERED = { yes: "", partly: " (partly)", no: " (not really)" };
 
+  function renderRangeState(state, text) {
+    const section = $("rv-range");
+    const box = $("rv-range-state");
+    if (!state) {
+      box.hidden = true;
+      return;
+    }
+    section.hidden = false;
+    $("rv-range-content").hidden = true;
+    box.hidden = false;
+    $("rv-range-state-text").textContent = state === "loading"
+      ? text || "Checking how far you explored…"
+      : "Claude couldn't finish the range check.";
+    $("rv-range-retry").hidden = state !== "error";
+  }
+
   function renderRange() {
     const section = $("rv-range");
     const r = review.range;
-    section.hidden = !r || !(r.summary || r.explorations.length);
-    if (section.hidden) return;
+    if (!hasRange(r)) {
+      // checkRange() shows its own loading and error states.
+      if (!rangeBusy && $("rv-range-retry").hidden) section.hidden = true;
+      return;
+    }
+    section.hidden = false;
+    $("rv-range-content").hidden = false;
+    $("rv-range-state").hidden = true;
 
     const verdict = $("rv-range-verdict");
     verdict.hidden = !r.verdict;
@@ -607,7 +629,23 @@
         "are the approximate position of the element the point is about, as a percentage (0–100) of that screen's width and height" +
         (reading ? " (work it out from the positions and the screen size in the reading)" : "") +
         '. Use null for x and y when the point is about the whole screen.',
-      "Then judge the range of the exploration as a whole. In product design, exploring mostly means making different bets " +
+      ...rangeTask(),
+            "Then compare the explorations and write a short summary.",
+      "",
+      "Reply with only JSON:",
+      '{"columns": [{"label": "<label exactly as given>", "verdicts": [' + analysis.observations.length +
+        ' values in observation order], "note": string, "overall": string, ' +
+        '"strengths": [{"text": string, "screen": number, "x": number|null, "y": number|null}], ' +
+        '"improvements": [{"text": string, "screen": number, "x": number|null, "y": number|null}]}], ' +
+        '"range": {"verdict", "summary", "shared", "untried", "explorations": [{"label", "bet", "relation", "angles"}]}, ' +
+        SUMMARY_SHAPE + "}",
+    ];
+  }
+
+  // How far the explorations range: shared by the full review and the range-only check.
+  function rangeTask() {
+    return [
+      "Judge the range of the exploration as a whole. In product design, exploring mostly means making different bets " +
         "about what matters most on the screen: a different hero and hierarchy, a different structure, or different components " +
         "and interaction. Visual tone usually varies less because the brand and the category set it; count tone as range only " +
         "where this brief leaves room for it, and say so when it doesn't.",
@@ -618,15 +656,6 @@
       '   Overall: "verdict": "wide", "some" or "narrow"; "summary": 1–2 sentences on how far the learner explored; ' +
         '"shared": the assumption every exploration keeps, in one sentence ("" if there is none); "untried": one concrete ' +
         "direction for this brief that none of them tried, as a different bet, in 1–2 sentences.",
-      "Then compare the explorations and write a short summary.",
-      "",
-      "Reply with only JSON:",
-      '{"columns": [{"label": "<label exactly as given>", "verdicts": [' + analysis.observations.length +
-        ' values in observation order], "note": string, "overall": string, ' +
-        '"strengths": [{"text": string, "screen": number, "x": number|null, "y": number|null}], ' +
-        '"improvements": [{"text": string, "screen": number, "x": number|null, "y": number|null}]}], ' +
-        '"range": {"verdict", "summary", "shared", "untried", "explorations": [{"label", "bet", "relation", "angles"}]}, ' +
-        SUMMARY_SHAPE + "}",
     ];
   }
 
@@ -683,10 +712,12 @@
   function cleanRange(r) {
     if (!r || typeof r !== "object") return null;
     const str = (x) => (typeof x === "string" ? x.trim() : "");
-    const byLabel = new Map(columns.filter((c) => c.exploration).map((c) => [c.label.toLowerCase(), c]));
+    const explorationCols = columns.filter((c) => c.exploration);
+    const byLabel = new Map(explorationCols.map((c) => [c.label.toLowerCase(), c]));
     const explorations = (Array.isArray(r.explorations) ? r.explorations : [])
-      .map((e) => {
-        const col = e && byLabel.get(str(e.label).toLowerCase());
+      .map((e, i) => {
+        // Match by label; if Claude spelled it differently, fall back to order.
+        const col = e && (byLabel.get(str(e.label).toLowerCase()) || explorationCols[i]);
         if (!col) return null;
         return {
           colId: col.id,
@@ -741,18 +772,94 @@
   // When this view can't send images: the page reads each screenshot (text,
   // sizes, colours, layout) and Claude reviews that reading.
   const SCREENS_PER_DESIGN = 3;
-  async function reviewWithReading(sample, refresh) {
-    if (!window.DTCReader) return null;
+  // The page's reading of each design's first screens: colId -> [text].
+  async function collectReadings(onProgress) {
     const jobs = [];
     columns.forEach((col) => col.screens.slice(0, SCREENS_PER_DESIGN).forEach((s, i) => jobs.push({ col, s, i })));
     const readings = new Map();
     for (let k = 0; k < jobs.length; k++) {
       const { col, s, i } = jobs[k];
-      setStatus("Reading your screens (" + (k + 1) + " of " + jobs.length + ")…");
+      (onProgress || setStatus)("Reading your screens (" + (k + 1) + " of " + jobs.length + ")…");
       const text = await window.DTCReader.describe("screen:" + s.id, s.blob, challenge.platform);
       if (!readings.has(col.id)) readings.set(col.id, []);
       readings.get(col.id).push("Screen " + (i + 1) + (s.name ? ' ("' + s.name + '")' : "") + ":\n" + text);
     }
+    return readings;
+  }
+
+  const READING_NOTE =
+    "You can't see the screens. Instead, the page read each screenshot for you: the text on screen (by OCR, so a word " +
+    "may be misread), its position, height, colour, contrast and a rough weight, plus background bands, palette, " +
+    "picture areas, left edges and vertical gaps. Measurements are approximate. Reconstruct each layout from these readings.";
+
+  // ---------- Range-only check ----------
+  const hasRange = (r) => !!(r && (r.summary || (r.explorations && r.explorations.length)));
+  let rangeBusy = false;
+
+  async function checkRange(refresh) {
+    if (rangeBusy) return;
+    rangeBusy = true;
+    renderRangeState("loading");
+    try {
+      const sample = await getSample();
+      if (!sample) throw { code: "not_granted" };
+      const intro = [
+        "You are a senior product designer reviewing how widely a learner explored in a visual design practice exercise.",
+        "",
+        "Today's brief: " + challenge.brief,
+        "",
+      ];
+      const task = [...rangeTask(), "", 'Reply with only JSON: {"range": {"verdict", "summary", "shared", "untried", ' +
+        '"explorations": [{"label": "<label exactly as given>", "bet", "relation", "angles"}]}}'];
+      let raw;
+      const limits = review.mode === "images" ? await imageLimitsFor(sample) : null;
+      if (limits) {
+        const picked = pickImages(limits);
+        const seen = columns.map((c, i) => ({ col: c, screens: picked[i] })).filter((x) => x.screens.length);
+        let n = 0;
+        const mapping = seen.map(({ col, screens }) => {
+          const first = n + 1;
+          n += screens.length;
+          return "- " + (screens.length === 1 ? "Image " + first : "Images " + first + "–" + n) + ": " + describeColumn(col);
+        });
+        raw = await sample.json([...intro, "Attached images, in order:", ...mapping, "", ...task].join("\n"), {
+          images: seen.flatMap((x) => x.screens.map((sc) => sc.blob)),
+          modelTier: "default",
+          cache: refresh ? { ...CACHE, refresh: true } : CACHE,
+        });
+      } else {
+        if (!window.DTCReader) throw { code: "reader_unavailable" };
+        const readings = await collectReadings((t) => renderRangeState("loading", t));
+        renderRangeState("loading");
+        raw = await sample.json([
+          ...intro,
+          READING_NOTE,
+          "",
+          ...columns.map((col) => "### " + describeColumn(col) + "\n" + (readings.get(col.id) || []).join("\n\n")),
+          "",
+          ...task,
+        ].join("\n"), {
+          modelTier: "default",
+          cache: refresh ? { ...CACHE, refresh: true } : CACHE,
+        });
+      }
+      const range = cleanRange(raw && raw.range ? raw.range : raw);
+      if (!hasRange(range)) throw { code: "invalid_json" };
+      review.range = range;
+      save();
+      renderRangeState(null);
+      renderRange();
+    } catch (err) {
+      if (err && err.code === "cancelled") return;
+      renderRangeState("error");
+    } finally {
+      rangeBusy = false;
+    }
+  }
+
+  async function reviewWithReading(sample, refresh) {
+    if (!window.DTCReader) return null;
+    const readings = await collectReadings();
 
     const prompt = [
       ...reviewIntro(),
@@ -902,7 +1009,10 @@
       showBody();
       renderTable();
       renderSummary();
-      if (review.mode === "images" || review.mode === "read") rerunBtn.hidden = false;
+      if (review.mode === "images" || review.mode === "read") {
+        rerunBtn.hidden = false;
+        if (!hasRange(review.range)) checkRange(refresh);
+      }
     } catch (err) {
       const code = (err && err.code) || "upstream_error";
       if (code === "cancelled") return;
@@ -915,6 +1025,7 @@
   }
 
   summaryBtn.addEventListener("click", () => run("text"));
+  $("rv-range-retry").addEventListener("click", () => checkRange(true));
   rerunBtn.addEventListener("click", () => {
     columns.forEach((c) => {
       if (review.filledBy[c.id] === "claude") delete review.verdicts[c.id];
@@ -946,11 +1057,13 @@
       // Look again only when the explorations changed since Claude's last look.
       const needsClaude = columns.some((c) => c.exploration && !review.verdicts[c.id]) ||
         // Reviews from before the overall take and annotated points.
-        columns.some((c) => c.exploration && !(review.critique && review.critique[c.id] && "overall" in review.critique[c.id])) ||
-        // Reviews from before the range check.
-        !("range" in review);
+        columns.some((c) => c.exploration && !(review.critique && review.critique[c.id] && "overall" in review.critique[c.id]));
       if (needsClaude || review.signature !== signature()) run("images", true);
-      else rerunBtn.hidden = false;
+      else {
+        rerunBtn.hidden = false;
+        // Reviews from before the range check, or where Claude left it out.
+        if (!hasRange(review.range)) checkRange(false);
+      }
     } else {
       // Claude hasn't seen the screens yet: try now. Falls back to the
       // open-in-browser panel when this view can't send images.

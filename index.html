@@ -402,6 +402,11 @@
           <p>Whether your explorations made different bets, not just different styling</p>
         </div>
         <div class="range__card">
+          <div class="range__state" id="rv-range-state" hidden>
+            <p id="rv-range-state-text">Checking how far you explored…</p>
+            <button type="button" class="btn btn--sm" id="rv-range-retry" hidden>Try again</button>
+          </div>
+          <div class="range__content" id="rv-range-content">
           <div class="range__top">
             <span class="range__verdict" id="rv-range-verdict" hidden></span>
             <p class="range__summary" id="rv-range-summary"></p>
@@ -416,6 +421,7 @@
               <p class="rv-summary__label">A direction you didn't try</p>
               <p id="rv-range-untried"></p>
             </div>
+          </div>
           </div>
         </div>
       </section>

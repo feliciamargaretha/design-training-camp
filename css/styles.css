@@ -1404,6 +1404,9 @@ button.btn { border: 0; font: inherit; font-size: 12px; cursor: pointer; }
   display: grid;
   gap: 18px;
 }
+.range__content { display: grid; gap: 18px; }
+.range__state { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.range__state p { margin: 0; font-size: 14px; color: var(--ink-soft); }
 .range__top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .range__verdict {
   flex: none;
