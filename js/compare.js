@@ -22,7 +22,7 @@
   const statusAction = $("cmp-status-action");
   const rerun = $("cmp-rerun");
 
-  let analysis = null; // { challengeId, headline, observations, refCount, designCount }
+  let analysis = null; // { challengeId, headline, observations, mode, refCount, designCount }
   let noticed = new Set();
   let running = false;
 
@@ -55,8 +55,9 @@
 
   function renderAnalysis() {
     $("cmp-headline").textContent = analysis.headline;
-    $("cmp-meta").textContent = "Claude's analysis · " + analysis.refCount + " reference screens · " +
-      analysis.observations.length + " observations";
+    $("cmp-meta").textContent = "Claude's analysis · " +
+      (analysis.mode === "text" ? "Written from the brief" : analysis.refCount + " reference screens") +
+      " · " + analysis.observations.length + " observations";
     list.replaceChildren(...analysis.observations.map((o, i) => {
       const li = document.createElement("li");
       li.className = "obs";
@@ -131,7 +132,23 @@
   }
 
   // ---------- Asking Claude ----------
-  function buildPrompt(refs, designCount, intent) {
+  // Used when the view doesn't say what it supports: try sending images anyway.
+  const ASSUMED_IMAGE_LIMITS = {
+    maxCount: 6,
+    maxInputBytes: 20000000,
+    mediaTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  };
+
+  const FORMAT = [
+    "Each observation has:",
+    '- "title": an imperative of at most 7 words, e.g. "Make the next step unmistakable"',
+  ];
+  const JSON_SHAPE =
+    'Reply with only JSON: {"headline": string, "observations": [{"title", "body", "yourDesign", "yourDesignNote"}]}';
+  const HEADLINE =
+    'Also write "headline": "A closer look at <the screen type>." in sentence case, e.g. "A closer look at checkout."';
+
+  function promptWithImages(refs, designCount, intent) {
     const lines = [
       "You are a senior product designer coaching someone who is training their visual design eye.",
       "",
@@ -155,31 +172,59 @@
         "and the occasional one that doesn't. Base every observation on what is visible in the images and name the apps that show it. " +
         "Cover layout and hierarchy, typography, spacing, color, copy and interaction, not only one of them. No generic advice.",
       "",
-      "Each observation has:",
-      '- "title": an imperative of at most 7 words, e.g. "Make the next step unmistakable"',
+      ...FORMAT,
       '- "body": 1–2 sentences, at most 40 words, citing specific apps and visible details',
       designCount
         ? '- "yourDesign": "yes", "partly" or "no": whether the learner\'s design already does this\n' +
           '- "yourDesignNote": one short sentence pointing at the specific part of their design'
         : '- "yourDesign": null\n- "yourDesignNote": null',
       "",
-      'Also write "headline": "A closer look at <the screen type>." in sentence case, e.g. "A closer look at checkout."',
+      HEADLINE,
       "",
-      'Reply with only JSON: {"headline": string, "observations": [{"title", "body", "yourDesign", "yourDesignNote"}]}'
+      JSON_SHAPE
     );
     return lines.join("\n");
   }
 
-  function clean(raw, refCount, designCount) {
+  // Fallback when this view can't send images: Claude can't see the screens,
+  // so it writes what strong screens of this type do, for the learner to check
+  // against the references they just studied.
+  function promptWithoutImages(refs) {
+    return [
+      "You are a senior product designer coaching someone who is training their visual design eye.",
+      "",
+      "Today's brief: " + challenge.brief,
+      "The learner has just studied real " + challenge.name.toLowerCase() + " screens on Mobbin from: " +
+        refs.map((r) => r.appName).join(", ") + ".",
+      "You cannot see those screens or the learner's design.",
+      "",
+      "Write exactly " + COUNT + " observations: the design decisions that make strong " + challenge.name.toLowerCase() +
+        " screens work, phrased so the learner can check each one against the screens they studied. " +
+        "Be concrete about layout and hierarchy, typography, spacing, color, copy and interaction. " +
+        "Do not claim what any specific app's screen shows.",
+      "",
+      ...FORMAT,
+      '- "body": 1–2 sentences, at most 40 words, specific enough to check against a screen',
+      '- "yourDesign": null',
+      '- "yourDesignNote": null',
+      "",
+      HEADLINE,
+      "",
+      JSON_SHAPE,
+    ].join("\n");
+  }
+
+  function clean(raw, meta) {
     if (!raw || !Array.isArray(raw.observations)) return null;
+    const judged = meta.mode === "images" && meta.designCount > 0;
     const observations = raw.observations
       .filter((o) => o && typeof o.title === "string" && typeof o.body === "string")
       .slice(0, COUNT)
       .map((o) => ({
         title: o.title.trim(),
         body: o.body.trim(),
-        yourDesign: designCount && ["yes", "partly", "no"].includes(o.yourDesign) ? o.yourDesign : null,
-        yourDesignNote: designCount && typeof o.yourDesignNote === "string" ? o.yourDesignNote.trim() : "",
+        yourDesign: judged && ["yes", "partly", "no"].includes(o.yourDesign) ? o.yourDesign : null,
+        yourDesignNote: judged && typeof o.yourDesignNote === "string" ? o.yourDesignNote.trim() : "",
       }));
     if (!observations.length) return null;
     return {
@@ -188,15 +233,17 @@
         ? raw.headline.trim()
         : "A closer look at " + challenge.name.toLowerCase() + ".",
       observations,
-      refCount,
-      designCount,
+      ...meta,
     };
   }
+
+  const TEXT_ONLY_NOTE =
+    "This view of Claude can't send images, so Claude wrote this from today's brief without seeing the screens or your design. " +
+    "Check each point against the references in Study. Opening this page at claude.ai in a web browser may let Claude analyze the screens themselves.";
 
   const ERRORS = {
     not_granted: "This page isn't allowed to ask Claude. Reload and choose Allow when Claude asks.",
     sampling_disabled: "Claude isn't available for this account, so the analysis can't run.",
-    images_unavailable: "Claude can't look at images in this view, so it can't analyze the screens.",
     image_rejected: "Claude couldn't read one of the screens. Try uploading your design as PNG or JPG.",
     rate_limited: "Claude is busy or you've hit your usage limit. Try again in a few minutes.",
     session_expired: "Your Claude session expired. Sign in again, then reload.",
@@ -206,6 +253,56 @@
     prompt_too_large: "Too much to send at once. Remove a few design screens and try again.",
   };
   const RETRYABLE = new Set(["rate_limited", "invalid_json", "empty_completion", "upstream_error"]);
+
+  async function getSample() {
+    try {
+      return window.claude && window.claude.use ? await window.claude.use("sample") : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // The view's image limits; ASSUMED_IMAGE_LIMITS when it can't say; null when it says no.
+  async function imageLimitsFor(sample) {
+    if (typeof sample.limits !== "function") return ASSUMED_IMAGE_LIMITS;
+    try {
+      const limits = await sample.limits();
+      return (limits && limits.images) || null;
+    } catch (_) {
+      return ASSUMED_IMAGE_LIMITS;
+    }
+  }
+
+  async function askWithImages(sample, imageLimits, refsAll, design, cache) {
+    const designScreens = design && design.challengeId === challenge.id ? design.screens || [] : [];
+    const usable = designScreens
+      .map((s) => s.blob)
+      .filter((b) => b && imageLimits.mediaTypes.includes(b.type) && b.size <= imageLimits.maxInputBytes);
+    const designBudget = Math.min(usable.length, 3, Math.max(0, imageLimits.maxCount - 1));
+    const refs = refsAll.slice(0, Math.max(1, imageLimits.maxCount - designBudget));
+    const designBlobs = usable.slice(0, Math.min(designBudget, imageLimits.maxCount - refs.length));
+    const images = [...refs.map((r) => window.DTCRefs.toBlob(r.image)), ...designBlobs];
+
+    setStatus("Claude is looking at " + refs.length + " reference screens" +
+      (designBlobs.length ? " and your design" : "") + "…");
+    const raw = await sample.json(promptWithImages(refs, designBlobs.length, design && design.intent), {
+      images,
+      modelTier: "default",
+      cache,
+      onText: () => setStatus("Writing the analysis…"),
+    });
+    return clean(raw, { mode: "images", refCount: refs.length, designCount: designBlobs.length });
+  }
+
+  async function askWithoutImages(sample, refs, cache) {
+    setStatus("Claude is writing an analysis from today's brief…");
+    const raw = await sample.json(promptWithoutImages(refs), {
+      modelTier: "default",
+      cache,
+      onText: () => setStatus("Writing the analysis…"),
+    });
+    return clean(raw, { mode: "text", refCount: refs.length, designCount: 0 });
+  }
 
   async function runAnalysis(refresh) {
     if (running) return;
@@ -223,10 +320,7 @@
         return;
       }
 
-      let sample = null;
-      try {
-        sample = window.claude && window.claude.use ? await window.claude.use("sample") : null;
-      } catch (_) {}
+      const sample = await getSample();
       if (!sample) {
         list.replaceChildren();
         setStatus("The analysis is written by Claude, so it only runs when this site is open inside Claude. " +
@@ -234,36 +328,22 @@
         return;
       }
 
-      const limits = await sample.limits().catch(() => null);
-      const imageLimits = limits && limits.images;
-      if (!imageLimits) {
-        list.replaceChildren();
-        setStatus(ERRORS.images_unavailable);
-        return;
-      }
-
+      const cache = refresh ? { ...CACHE, refresh: true } : CACHE;
       const design = await window.DTCStore.get(window.DTCStore.key("design"));
-      const designScreens = design && design.challengeId === challenge.id ? design.screens || [] : [];
-      const usable = designScreens
-        .map((s) => s.blob)
-        .filter((b) => b && imageLimits.mediaTypes.includes(b.type) && b.size <= imageLimits.maxInputBytes);
-      const designBudget = Math.min(usable.length, 3, Math.max(0, imageLimits.maxCount - 1));
-      const refs = refsRes.screens.slice(0, Math.max(1, imageLimits.maxCount - designBudget));
-      const designBlobs = usable.slice(0, Math.min(designBudget, imageLimits.maxCount - refs.length));
-      const images = [...refs.map((r) => window.DTCRefs.toBlob(r.image)), ...designBlobs];
+      const imageLimits = await imageLimitsFor(sample);
 
-      setStatus("Claude is looking at " + refs.length + " reference screens" +
-        (designBlobs.length ? " and your design" : "") + "…");
+      let canSendImages = !!imageLimits;
+      let result = null;
+      if (canSendImages) {
+        try {
+          result = await askWithImages(sample, imageLimits, refsRes.screens, design, cache);
+        } catch (err) {
+          if (!err || err.code !== "images_unavailable") throw err;
+          canSendImages = false; // the view refused images after all
+        }
+      }
+      if (!canSendImages) result = await askWithoutImages(sample, refsRes.screens, cache);
 
-      const prompt = buildPrompt(refs, designBlobs.length, design && design.intent);
-      const raw = await sample.json(prompt, {
-        images,
-        modelTier: "default",
-        cache: refresh ? { ...CACHE, refresh: true } : CACHE,
-        onText: () => setStatus("Writing the analysis…"),
-      });
-
-      const result = clean(raw, refs.length, designBlobs.length);
       if (!result) {
         list.replaceChildren();
         setStatus(ERRORS.invalid_json, { label: "Try again", onClick: () => runAnalysis(true) });
@@ -273,9 +353,7 @@
       noticed = new Set();
       await window.DTCStore.set(compareKey, { challengeId: challenge.id, noticed: [] });
       await window.DTCStore.set(analysisKey, analysis);
-      setStatus("");
-      renderAnalysis();
-      rerun.hidden = false;
+      showAnalysis();
     } catch (err) {
       const code = (err && err.code) || "upstream_error";
       if (code === "cancelled") return;
@@ -287,6 +365,12 @@
     } finally {
       running = false;
     }
+  }
+
+  function showAnalysis() {
+    setStatus(analysis.mode === "text" ? TEXT_ONLY_NOTE : "");
+    renderAnalysis();
+    rerun.hidden = false;
   }
 
   rerun.addEventListener("click", () => runAnalysis(true));
@@ -304,12 +388,21 @@
       window.DTCStore.get(compareKey),
     ]);
     if (marks && marks.challengeId === challenge.id) noticed = new Set(marks.noticed || []);
-    if (saved && saved.challengeId === challenge.id && saved.observations && saved.observations.length) {
-      analysis = saved;
-      renderAnalysis();
-      rerun.hidden = false;
-    } else {
+    if (!(saved && saved.challengeId === challenge.id && saved.observations && saved.observations.length)) {
       runAnalysis(false);
+      return;
+    }
+    analysis = saved;
+    showAnalysis();
+
+    // A brief-only analysis from a view without images: redo it from the
+    // screens when this view can send them.
+    if (saved.mode === "text") {
+      const sample = await getSample();
+      const limits = sample && typeof sample.limits === "function"
+        ? await sample.limits().catch(() => null)
+        : null;
+      if (limits && limits.images) runAnalysis(true);
     }
   });
 })();
