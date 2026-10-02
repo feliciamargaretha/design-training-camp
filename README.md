@@ -40,6 +40,10 @@ reference screens and your uploaded design and write 10 observations. Like the
 Mobbin references, it only runs inside Claude; it uses your own Claude usage and
 is kept for the day so reloading doesn't ask again.
 
-Some Claude views can't send images to Claude. There, Compare writes its analysis from
-the brief instead of the screens, and Review asks you to fill in the grid yourself before
-Claude summarizes your answers.
+Some Claude accounts and views can't send images to Claude. There, the page reads each
+screenshot itself (`js/screen-reader.js`): the text via Tesseract.js OCR, plus positions,
+text sizes, colours, contrast, background bands, picture areas, alignment and spacing. Claude
+analyzes and reviews that reading instead of the image. Tesseract.js and its English data are
+vendored in `vendor/tesseract/` (Apache-2.0) so nothing loads from other sites. If the reader
+can't start, Compare falls back to an analysis of the brief and Review lets you fill in the
+grid yourself.

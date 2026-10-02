@@ -285,8 +285,9 @@
     $("rv-why").textContent = s.why || "";
     $("rv-improved").textContent = s.improved || "";
     $("rv-next").textContent = s.next || "";
-    $("rv-summary-source").textContent = review.mode === "images"
-      ? "Written by Claude after looking at your screens."
+    $("rv-summary-source").textContent =
+      review.mode === "images" ? "Written by Claude after looking at your screens."
+      : review.mode === "read" ? "Written by Claude from the page's reading of your screenshots."
       : "Written by Claude from your answers in the grid. It didn't see your screens.";
   }
 
@@ -342,34 +343,17 @@
     return picked;
   }
 
-  async function reviewWithImages(sample, limits, refresh) {
-    const picked = pickImages(limits);
-    const seen = columns.map((c, i) => ({ col: c, blobs: picked[i] })).filter((x) => x.blobs.length);
-    if (!seen.some((x) => x.col.exploration)) return null;
+  function describeColumn(col) {
+    return '"' + col.label + '"' +
+      (col.exploration ? " (a redesign exploration)" : " (the learner's original design, before studying references)") +
+      (col.intent ? ', intent: "' + col.intent.slice(0, 140) + '"' : "");
+  }
 
-    let n = 0;
-    const mapping = seen.map(({ col, blobs }) => {
-      const first = n + 1;
-      n += blobs.length;
-      const range = blobs.length === 1 ? "Image " + first : "Images " + first + "–" + n;
-      return "- " + range + ': "' + col.label + '"' +
-        (col.exploration ? " (a redesign exploration)" : " (the learner's original design, before studying references)") +
-        (col.intent ? ', intent: "' + col.intent.slice(0, 140) + '"' : "");
-    });
-
-    const prompt = [
-      "You are a senior product designer reviewing a learner's redesign in a visual design practice exercise.",
-      "",
-      "Today's brief: " + challenge.brief,
-      "",
-      "Earlier, the learner studied reference screens and got these " + analysis.observations.length + " observations:",
-      observationList(),
-      "",
-      "Attached images, in order:",
-      ...mapping,
-      "",
+  // The part of the prompt both routes share: what to judge and the reply shape.
+  function reviewTask(basis) {
+    return [
       "For each design:",
-      "1. Judge every observation: \"applied\", \"partly\" or \"not_yet\", based only on what is visible.",
+      "1. Judge every observation: \"applied\", \"partly\" or \"not_yet\", based only on " + basis + ".",
       "2. Write a one-sentence note on what it does best.",
       "3. Then critique it as a senior UI/UX designer in a design review: beyond the observations, look at visual hierarchy, " +
         "typography, spacing and alignment, color and contrast, accessibility, copy, affordances and platform conventions. " +
@@ -381,6 +365,61 @@
       '{"columns": [{"label": "<label exactly as given>", "verdicts": [' + analysis.observations.length +
         ' values in observation order], "note": string, "strengths": [string], "improvements": [string]}], ' +
         SUMMARY_SHAPE + "}",
+    ];
+  }
+
+  function reviewIntro() {
+    return [
+      "You are a senior product designer reviewing a learner's redesign in a visual design practice exercise.",
+      "",
+      "Today's brief: " + challenge.brief,
+      "",
+      "Earlier, the learner studied reference screens and got these " + analysis.observations.length + " observations:",
+      observationList(),
+      "",
+    ];
+  }
+
+  // Store Claude's answer: verdicts (unless you set them by hand), notes, critique, summary.
+  function applyReview(raw, seenCols, mode) {
+    if (!raw || !Array.isArray(raw.columns)) return false;
+    const points = (x) => (Array.isArray(x) ? x.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim()).slice(0, 4) : []);
+    review.critique = review.critique || {};
+    raw.columns.forEach((c, i) => {
+      const target = seenCols[i];
+      if (!target || !c) return;
+      review.critique[target.id] = { strengths: points(c.strengths), improvements: points(c.improvements) };
+      if (typeof c.note === "string") review.notes[target.id] = c.note.trim();
+      if (!Array.isArray(c.verdicts) || review.filledBy[target.id] === "you") return;
+      review.verdicts[target.id] = analysis.observations.map((_, j) =>
+        VALUES.includes(c.verdicts[j]) ? c.verdicts[j] : null
+      );
+      review.filledBy[target.id] = "claude";
+    });
+    review.summary = cleanSummary(raw.summary);
+    review.mode = mode;
+    return true;
+  }
+
+  async function reviewWithImages(sample, limits, refresh) {
+    const picked = pickImages(limits);
+    const seen = columns.map((c, i) => ({ col: c, blobs: picked[i] })).filter((x) => x.blobs.length);
+    if (!seen.some((x) => x.col.exploration)) return null;
+
+    let n = 0;
+    const mapping = seen.map(({ col, blobs }) => {
+      const first = n + 1;
+      n += blobs.length;
+      const range = blobs.length === 1 ? "Image " + first : "Images " + first + "–" + n;
+      return "- " + range + ": " + describeColumn(col);
+    });
+
+    const prompt = [
+      ...reviewIntro(),
+      "Attached images, in order:",
+      ...mapping,
+      "",
+      ...reviewTask("what is visible"),
     ].join("\n");
 
     setStatus("Claude is reviewing " + seen.filter((x) => x.col.exploration).length + " exploration(s)…");
@@ -390,26 +429,45 @@
       cache: refresh ? { ...CACHE, refresh: true } : CACHE,
       onText: () => setStatus("Writing the review…"),
     });
-    if (!raw || !Array.isArray(raw.columns)) return null;
+    return applyReview(raw, seen.map((x) => x.col), "images");
+  }
 
-    const points = (x) => (Array.isArray(x) ? x.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim()).slice(0, 4) : []);
-    review.critique = review.critique || {};
-    raw.columns.forEach((c, i) => {
-      const target = seen[i] && seen[i].col;
-      if (!target || !c) return;
-      review.critique[target.id] = { strengths: points(c.strengths), improvements: points(c.improvements) };
-      if (!Array.isArray(c.verdicts)) return;
-      // Keep what you set by hand.
-      if (review.filledBy[target.id] === "you") return;
-      review.verdicts[target.id] = analysis.observations.map((_, j) =>
-        VALUES.includes(c.verdicts[j]) ? c.verdicts[j] : null
-      );
-      review.filledBy[target.id] = "claude";
-      if (typeof c.note === "string") review.notes[target.id] = c.note.trim();
+  // When this view can't send images: the page reads each screenshot (text,
+  // sizes, colours, layout) and Claude reviews that reading.
+  const SCREENS_PER_DESIGN = 3;
+  async function reviewWithReading(sample, refresh) {
+    if (!window.DTCReader) return null;
+    const jobs = [];
+    columns.forEach((col) => col.screens.slice(0, SCREENS_PER_DESIGN).forEach((s, i) => jobs.push({ col, s, i })));
+    const readings = new Map();
+    for (let k = 0; k < jobs.length; k++) {
+      const { col, s, i } = jobs[k];
+      setStatus("Reading your screens (" + (k + 1) + " of " + jobs.length + ")…");
+      const text = await window.DTCReader.describe("screen:" + s.id, s.blob, challenge.platform);
+      if (!readings.has(col.id)) readings.set(col.id, []);
+      readings.get(col.id).push("Screen " + (i + 1) + (s.name ? ' ("' + s.name + '")' : "") + ":\n" + text);
+    }
+
+    const prompt = [
+      ...reviewIntro(),
+      "You can't see the screens. Instead, the page read each screenshot for you: the text on screen (by OCR, so a word " +
+        "may be misread), its position, height, colour, contrast and a rough weight, plus background bands, palette, " +
+        "picture areas, left edges and vertical gaps. Measurements are approximate. Reconstruct each layout from these " +
+        "readings. Judge only what the reading supports; icons and imagery only show up as picture areas, so don't " +
+        "critique their content.",
+      "",
+      ...columns.map((col) => "### " + describeColumn(col) + "\n" + (readings.get(col.id) || []).join("\n\n")),
+      "",
+      ...reviewTask("what the readings show"),
+    ].join("\n");
+
+    setStatus("Claude is reviewing " + columns.filter((c) => c.exploration).length + " exploration(s)…");
+    const raw = await sample.json(prompt, {
+      modelTier: "default",
+      cache: refresh ? { ...CACHE, refresh: true } : CACHE,
+      onText: () => setStatus("Writing the review…"),
     });
-    review.summary = cleanSummary(raw.summary);
-    review.mode = "images";
-    return true;
+    return applyReview(raw, columns, "read");
   }
 
   async function summaryFromAnswers(sample) {
@@ -466,29 +524,9 @@
   };
   const RETRYABLE = new Set(["rate_limited", "invalid_json", "empty_completion", "upstream_error"]);
 
-  // ---------- When this view can't send images ----------
+  // ---------- When neither images nor the screen reader work ----------
   const noImages = $("rv-noimg");
   const manualBtn = $("rv-manual");
-  $("rv-link").textContent = window.DTC.ARTIFACT_URL.replace(/^https:\/\//, "");
-  $("rv-link").href = window.DTC.ARTIFACT_URL;
-
-  $("rv-copy").addEventListener("click", () => {
-    const done = () => ($("rv-copy").textContent = "Link copied");
-    const fallback = () => {
-      const range = document.createRange();
-      range.selectNodeContents($("rv-link"));
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-      $("rv-copy").textContent = "Link selected, press Cmd+C";
-    };
-    try {
-      navigator.clipboard.writeText(window.DTC.ARTIFACT_URL).then(done, fallback);
-    } catch (_) {
-      fallback();
-    }
-  });
-
   manualBtn.addEventListener("click", () => {
     review.mode = "manual";
     save();
@@ -497,7 +535,9 @@
 
   function showBody() {
     const manual = review.mode === "manual";
-    $("rv-body").hidden = !(review.mode === "images" || manual);
+    const byClaude = review.mode === "images" || review.mode === "read";
+    $("rv-body").hidden = !(byClaude || manual);
+    $("rv-read-note").hidden = review.mode !== "read";
     $("rv-cell-hint").hidden = $("rv-body").hidden;
     manualBtn.hidden = manual;
     $("rv-manual-note").hidden = !manual;
@@ -531,6 +571,14 @@
           }
         }
         if (!ok) {
+          try {
+            ok = await reviewWithReading(sample, refresh);
+          } catch (err) {
+            if (err && err.code) throw err; // a Claude error, handled below
+            ok = false; // the reader itself failed to load or run
+          }
+        }
+        if (!ok) {
           setStatus("");
           noImages.hidden = false;
           showBody();
@@ -548,7 +596,7 @@
       showBody();
       renderTable();
       renderSummary();
-      if (review.mode === "images") rerunBtn.hidden = false;
+      if (review.mode === "images" || review.mode === "read") rerunBtn.hidden = false;
     } catch (err) {
       const code = (err && err.code) || "upstream_error";
       if (code === "cancelled") return;
@@ -588,7 +636,7 @@
     renderSummary();
     showBody();
 
-    if (review.mode === "images") {
+    if (review.mode === "images" || review.mode === "read") {
       // Look again only when the explorations changed since Claude's last look.
       const needsClaude = columns.some((c) => c.exploration && !review.verdicts[c.id]);
       if (needsClaude || review.signature !== signature()) run("images", true);

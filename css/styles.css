@@ -1152,24 +1152,6 @@ button.btn { border: 0; font: inherit; font-size: 12px; cursor: pointer; }
   letter-spacing: -.01em;
 }
 .noimg p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--ink-soft); max-width: 68ch; }
-.noimg__link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  max-width: 100%;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 6px 6px 6px 14px;
-}
-.noimg__link a {
-  font-size: 13px;
-  color: var(--ink);
-  text-underline-offset: 3px;
-  overflow-wrap: anywhere;
-  min-width: 0;
-}
 .rv-manual-note { margin: 0 0 16px; font-size: 13px; color: var(--ink-soft); }
 
 .crit-section { margin-top: 32px; }

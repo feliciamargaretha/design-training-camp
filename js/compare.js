@@ -56,7 +56,8 @@
   function renderAnalysis() {
     $("cmp-headline").textContent = analysis.headline;
     $("cmp-meta").textContent = "Claude's analysis · " +
-      (analysis.mode === "text" ? "Written from the brief" : analysis.refCount + " reference screens") +
+      (analysis.mode === "text" ? "Written from the brief"
+        : analysis.refCount + " reference screens" + (analysis.mode === "read" ? ", read by the page" : "")) +
       " · " + analysis.observations.length + " observations";
     list.replaceChildren(...analysis.observations.map((o, i) => {
       const li = document.createElement("li");
@@ -216,7 +217,7 @@
 
   function clean(raw, meta) {
     if (!raw || !Array.isArray(raw.observations)) return null;
-    const judged = meta.mode === "images" && meta.designCount > 0;
+    const judged = (meta.mode === "images" || meta.mode === "read") && meta.designCount > 0;
     const observations = raw.observations
       .filter((o) => o && typeof o.title === "string" && typeof o.body === "string")
       .slice(0, COUNT)
@@ -236,6 +237,10 @@
       ...meta,
     };
   }
+
+  const READ_NOTE =
+    "Claude can't see images in your Claude account, so the page read each screenshot (the text, sizes, positions, " +
+    "colours and contrast) and Claude analyzed that reading. It can misread a word, and it can't judge icons or imagery.";
 
   const TEXT_ONLY_NOTE =
     "This view of Claude can't send images, so Claude wrote this from today's brief without seeing the screens or your design. " +
@@ -294,6 +299,60 @@
     return clean(raw, { mode: "images", refCount: refs.length, designCount: designBlobs.length });
   }
 
+  // When this view can't send images: the page reads each screenshot (text,
+  // sizes, colours, layout) and Claude analyzes that reading.
+  async function askWithReading(sample, refs, design, cache) {
+    if (!window.DTCReader) return null;
+    const designScreens = design && design.challengeId === challenge.id ? (design.screens || []).slice(0, 3) : [];
+    const jobs = [
+      ...refs.map((r) => ({ key: "ref:" + r.id, blob: window.DTCRefs.toBlob(r.image), label: r.appName, ref: true })),
+      ...designScreens.map((s, i) => ({ key: "screen:" + s.id, blob: s.blob, label: "Learner's design, screen " + (i + 1) })),
+    ];
+    const readings = [];
+    for (let k = 0; k < jobs.length; k++) {
+      setStatus("Reading the screens (" + (k + 1) + " of " + jobs.length + ")…");
+      readings.push("### " + jobs[k].label + (jobs[k].ref ? " (a real " + challenge.name.toLowerCase() + " screen from Mobbin)" : "") +
+        "\n" + (await window.DTCReader.describe(jobs[k].key, jobs[k].blob, challenge.platform)));
+    }
+    const intent = design && design.intent;
+    const prompt = [
+      "You are a senior product designer coaching someone who is training their visual design eye.",
+      "",
+      "Today's brief: " + challenge.brief,
+      "",
+      "You can't see the screens. Instead, the page read each screenshot for you: the text on screen (by OCR, so a word " +
+        "may be misread), its position, height, colour, contrast and a rough weight, plus background bands, palette, " +
+        "picture areas, left edges and vertical gaps. Measurements are approximate, and the Mobbin screens are small " +
+        "previews, so their readings are rougher. Reconstruct each layout from the readings.",
+      designScreens.length && intent ? 'The learner\'s stated intent: "' + intent.slice(0, 140) + '"' : "",
+      "",
+      ...readings,
+      "",
+      "Write exactly " + COUNT + " observations about the reference screens: the design decisions that make them work, " +
+        "and the occasional one that doesn't. Base every observation on what the readings show and name the apps that show it. " +
+        "Cover layout and hierarchy, typography, spacing, color, copy and interaction. Don't comment on icons or imagery. No generic advice.",
+      "",
+      ...FORMAT,
+      '- "body": 1–2 sentences, at most 40 words, citing specific apps and details from the readings',
+      designScreens.length
+        ? '- "yourDesign": "yes", "partly" or "no": whether the learner\'s design already does this\n' +
+          '- "yourDesignNote": one short sentence pointing at the specific part of their design'
+        : '- "yourDesign": null\n- "yourDesignNote": null',
+      "",
+      HEADLINE,
+      "",
+      JSON_SHAPE,
+    ].filter((l, i, a) => l !== "" || a[i - 1] !== "").join("\n");
+
+    setStatus("Claude is analyzing the screens…");
+    const raw = await sample.json(prompt, {
+      modelTier: "default",
+      cache,
+      onText: () => setStatus("Writing the analysis…"),
+    });
+    return clean(raw, { mode: "read", refCount: refs.length, designCount: designScreens.length });
+  }
+
   async function askWithoutImages(sample, refs, cache) {
     setStatus("Claude is writing an analysis from today's brief…");
     const raw = await sample.json(promptWithoutImages(refs), {
@@ -342,7 +401,15 @@
           canSendImages = false; // the view refused images after all
         }
       }
-      if (!canSendImages) result = await askWithoutImages(sample, refsRes.screens, cache);
+      if (!canSendImages) {
+        try {
+          result = await askWithReading(sample, refsRes.screens, design, cache);
+        } catch (err) {
+          if (err && err.code) throw err; // a Claude error, handled below
+          result = null; // the reader itself failed: fall back to the brief
+        }
+        if (!result) result = await askWithoutImages(sample, refsRes.screens, cache);
+      }
 
       if (!result) {
         list.replaceChildren();
@@ -368,7 +435,7 @@
   }
 
   function showAnalysis() {
-    setStatus(analysis.mode === "text" ? TEXT_ONLY_NOTE : "");
+    setStatus(analysis.mode === "text" ? TEXT_ONLY_NOTE : analysis.mode === "read" ? READ_NOTE : "");
     renderAnalysis();
     rerun.hidden = false;
   }
@@ -395,14 +462,8 @@
     analysis = saved;
     showAnalysis();
 
-    // A brief-only analysis from a view without images: redo it from the
-    // screens when this view can send them.
-    if (saved.mode === "text") {
-      const sample = await getSample();
-      const limits = sample && typeof sample.limits === "function"
-        ? await sample.limits().catch(() => null)
-        : null;
-      if (limits && limits.images) runAnalysis(true);
-    }
+    // A brief-only analysis (from before the page could read screenshots, or
+    // when reading failed): redo it from the screens.
+    if (saved.mode === "text") runAnalysis(true);
   });
 })();

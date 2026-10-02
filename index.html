@@ -371,18 +371,14 @@
     </div>
 
     <section class="noimg" id="rv-noimg" aria-labelledby="rv-noimg-title" hidden>
-      <h2 class="noimg__title" id="rv-noimg-title">Claude can't see your screens in this view</h2>
-      <p>To check your explorations and review them, Claude needs to look at the images, and this view of Claude doesn't let pages send them.
-        Open this page in a web browser at claude.ai, where Claude can usually see images. Your uploads and notes are saved in this browser's storage,
-        so in a different browser or app, upload your screens again.</p>
-      <div class="noimg__link">
-        <a id="rv-link" href="https://claude.ai" target="_blank" rel="noopener"></a>
-        <button type="button" class="btn btn--sm" id="rv-copy">Copy link</button>
-      </div>
-      <button type="button" class="text-btn text-btn--inline" id="rv-manual">Or fill in the grid myself</button>
+      <h2 class="noimg__title" id="rv-noimg-title">Claude couldn't review your screens</h2>
+      <p>Claude can't see images in your Claude account, so the page reads your screenshots for it, and that reader couldn't start here.
+        Reload the page to try again. If it keeps happening, mark the grid yourself and Claude will summarize your answers.</p>
+      <button type="button" class="btn btn--sm" id="rv-manual">Fill in the grid myself</button>
     </section>
 
     <div id="rv-body" hidden>
+      <p class="rv-manual-note" id="rv-read-note" hidden>Claude can't see images in your Claude account, so the page read each screenshot (the text, sizes, positions, colours and contrast) and Claude reviewed that reading. It can misread a word, and it can't judge icons or imagery.</p>
       <p class="rv-manual-note" id="rv-manual-note" hidden>You're filling in the grid yourself. Click each cell to cycle Applied, Partly and Not yet, then ask Claude for a summary of your answers.</p>
 
       <ul class="rv-tally" id="rv-tally" aria-label="Observations applied per design"></ul>
@@ -441,6 +437,7 @@
   <script src="js/router.js"></script>
   <script src="js/timer.js"></script>
   <script src="js/references.js"></script>
+  <script src="js/screen-reader.js"></script>
   <script src="js/landing.js"></script>
   <script src="js/workspace.js"></script>
   <script src="js/design.js"></script>

@@ -41,8 +41,5 @@
     return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
   }
 
-  // Where this site runs inside Claude (Mobbin and Claude only work there).
-  const ARTIFACT_URL = "https://claude.ai/artifact/1hhHv5iohQzNfcs4mwJ9nS";
-
-  window.DTC = { CHALLENGES, mobbinUrl, today, dateKey, ARTIFACT_URL };
+  window.DTC = { CHALLENGES, mobbinUrl, today, dateKey };
 })();
