@@ -4,7 +4,7 @@
   --ink: #141414;
   --ink-soft: #55554f;
   --ink-mute: #8a8a83;
-  --line: #e6e5df;
+  --line: #dcdbd3;
   --card: #f3f3ef;
   --card-active: #edf3dc;
   --lime: #d8f07c;
@@ -14,6 +14,8 @@
   --fog: #e3e5e9;
   --radius-lg: 22px;
   --radius-md: 14px;
+  /* Side padding: 16px on phones up to 72px, then centred at 1440px on wide screens. */
+  --gutter: max(clamp(16px, 5vw, 72px), calc((100% - 1440px) / 2));
   --display: "Inter Tight", "Inter", system-ui, sans-serif;
   --body: "Inter", system-ui, sans-serif;
 }
@@ -32,16 +34,13 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
-  padding: 24px;
 }
 
+/* Full-bleed page: the beige runs edge to edge; content keeps a side gutter. */
 .frame {
-  max-width: 1200px;
-  margin: 0 auto;
-  background: var(--frame);
-  border-radius: var(--radius-lg);
-  padding: 28px 40px 40px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 12px 40px rgba(0, 0, 0, .04);
+  min-height: 100vh;
+  padding-block: clamp(20px, 3vw, 40px) clamp(32px, 5vw, 64px);
+  padding-inline: var(--gutter);
 }
 
 /* Top bar */
@@ -81,7 +80,7 @@ body {
 .hero__title {
   font-family: var(--display);
   font-weight: 500;
-  font-size: clamp(44px, 6.4vw, 80px);
+  font-size: clamp(44px, 6.4vw, 96px);
   line-height: 1.02;
   letter-spacing: -.035em;
   margin: 0 0 28px;
@@ -1558,8 +1557,8 @@ button.btn { border: 0; font: inherit; font-size: 12px; cursor: pointer; }
 
 /* ---------- Past day banner ---------- */
 .day-banner {
-  max-width: 1200px;
-  margin: 0 auto 12px;
+  margin: 0;
+  padding-inline: var(--gutter);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1567,8 +1566,7 @@ button.btn { border: 0; font: inherit; font-size: 12px; cursor: pointer; }
   flex-wrap: wrap;
   background: var(--ink);
   color: #fff;
-  border-radius: 14px;
-  padding: 10px 16px;
+  padding-block: 10px;
 }
 .day-banner p { margin: 0; font-size: 13px; }
 .day-banner__links { display: flex; align-items: center; gap: 12px; }
@@ -1653,8 +1651,6 @@ button.btn { border: 0; font: inherit; font-size: 12px; cursor: pointer; }
   .round:last-child { grid-column: 1 / -1; min-height: 0; }
 }
 @media (max-width: 560px) {
-  body { padding: 0; }
-  .frame { border-radius: 0; padding: 20px 16px 32px; }
   .topbar { flex-direction: column; align-items: flex-start; }
   .rounds { grid-template-columns: 1fr; }
   .routine__head { flex-direction: column; gap: 4px; }
