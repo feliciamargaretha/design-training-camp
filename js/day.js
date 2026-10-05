@@ -1,27 +1,64 @@
-// When a past day is open (from History), say so on every page and offer the
-// way back to today.
+// Says which brief is on screen when it isn't today's, with a way to today's.
+// Also, once: picks up a brief started on an earlier day and not finished.
 (function () {
-  if (!window.DTC.isPast()) return;
-  const date = window.DTC.activeDate();
-  const challenge = window.DTC.today();
+  const DTC = window.DTC;
+  const mode = DTC.mode();
+  const challenge = DTC.today();
+  const date = DTC.activeDate();
+  const num = (c) => "#" + String(c.id).padStart(3, "0");
+  const dayName = (d) => d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 
-  const bar = document.createElement("div");
-  bar.className = "day-banner";
-  bar.setAttribute("role", "status");
-  const text = document.createElement("p");
-  text.textContent = "You're looking at " +
-    date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" }) +
-    " · Challenge #" + String(challenge.id).padStart(3, "0") + " · " + challenge.name;
-  const links = document.createElement("div");
-  links.className = "day-banner__links";
-  const history = document.createElement("a");
-  history.href = "#history";
-  history.textContent = "History";
-  const back = document.createElement("button");
-  back.type = "button";
-  back.textContent = "Back to today";
-  back.addEventListener("click", () => window.DTC.openDay(window.DTC.dateKey(new Date()), ""));
-  links.append(history, back);
-  bar.append(text, links);
-  document.body.prepend(bar);
+  if (mode !== "today") {
+    const todays = DTC.forDate(new Date());
+    const bar = document.createElement("div");
+    bar.className = "day-banner";
+    bar.setAttribute("role", "status");
+    const text = document.createElement("p");
+    text.textContent = mode === "carried"
+      ? "You're still on " + num(challenge) + " · " + challenge.name + ", from " + dayName(date) +
+        ". It stays until you finish its Review."
+      : "You're looking at " + dayName(date) + " · Challenge " + num(challenge) + " · " + challenge.name;
+    const links = document.createElement("div");
+    links.className = "day-banner__links";
+    const history = document.createElement("a");
+    history.href = "#history";
+    history.textContent = "History";
+    const back = document.createElement("button");
+    back.type = "button";
+    back.textContent = mode === "carried" ? "Switch to today's brief (" + num(todays) + ")" : "Back to today";
+    back.addEventListener("click", () => DTC.useToday(""));
+    links.append(history, back);
+    bar.append(text, links);
+    document.body.prepend(bar);
+    return;
+  }
+
+  // One-time: briefs started before pinning existed. Finished days are marked
+  // done; the latest unfinished one with a design becomes the current brief.
+  const FLAG = "dtc:pin-migrated";
+  let migrated = true;
+  try { migrated = !!localStorage.getItem(FLAG); localStorage.setItem(FLAG, "1"); } catch (_) {}
+  if (migrated || DTC.pinnedRaw()) return;
+
+  (async () => {
+    const todayKey = DTC.dateKey(new Date());
+    const dates = [...new Set((await window.DTCStore.keys()).map((k) => k.split(":")[0]))]
+      .filter((d) => DTC.parseKey(d) && d < todayKey)
+      .sort()
+      .reverse();
+    let carry = null;
+    for (const d of dates) {
+      const id = DTC.forDate(DTC.parseKey(d)).id;
+      const [design, review] = await Promise.all([
+        window.DTCStore.get(d + ":design"),
+        window.DTCStore.get(d + ":review"),
+      ]);
+      if (review && review.challengeId === id && review.summary) DTC.markDone(d);
+      else if (!carry && design && design.challengeId === id && (design.screens || []).length) carry = d;
+    }
+    if (carry) {
+      DTC.pin(carry);
+      location.reload();
+    }
+  })();
 })();

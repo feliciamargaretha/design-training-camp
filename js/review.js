@@ -526,6 +526,8 @@
     const s = review.summary;
     summaryEl.hidden = !s;
     if (!s) return;
+    // A takeaway means the brief is finished; tomorrow brings a new one.
+    window.DTC.markDone(window.DTC.dateKey());
     $("rv-strongest").textContent = s.strongest || "—";
     $("rv-why").textContent = s.why || "";
     $("rv-improved").textContent = s.improved || "";
@@ -1026,6 +1028,12 @@
 
   summaryBtn.addEventListener("click", () => run("text"));
   $("rv-range-retry").addEventListener("click", () => checkRange(true));
+  // Finished an earlier day's brief: move on to today's.
+  $("rv-done").addEventListener("click", (e) => {
+    if (window.DTC.mode() === "today") return;
+    e.preventDefault();
+    window.DTC.useToday("");
+  });
   rerunBtn.addEventListener("click", () => {
     columns.forEach((c) => {
       if (review.filledBy[c.id] === "claude") delete review.verdicts[c.id];

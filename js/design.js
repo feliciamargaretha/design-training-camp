@@ -49,6 +49,9 @@
     }
   });
 
+  // Starting a brief keeps it on screen until its Review is finished.
+  window.DTCPages.on("design", () => window.DTC.pin(window.DTC.dateKey()));
+
   // Restore today's work.
   window.DTCStore.get(storeKey).then((saved) => {
     if (saved && saved.challengeId === challenge.id) {

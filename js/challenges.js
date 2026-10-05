@@ -268,9 +268,19 @@
   }
 
   // ---------- Which day is on screen ----------
-  // Normally today. History opens a past day by remembering it for this tab
-  // and reloading, so every round loads that day's work.
+  // 1. A day opened from History (remembered for this tab).
+  // 2. Otherwise the brief you're working on: starting Design pins it, and it
+  //    stays, even on later days, until you finish its Review.
+  // 3. Otherwise today.
   const DATE_KEY = "dtc:date";
+  const PIN_KEY = "dtc:pinned";
+  const DONE_PREFIX = "dtc:done:";
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} },
+    remove(k) { try { localStorage.removeItem(k); } catch (_) {} },
+  };
 
   function parseKey(key) {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key || "");
@@ -282,28 +292,74 @@
     return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
   }
 
-  function activeDate() {
+  const isBeforeToday = (d) => d && utcDay(d) < utcDay(new Date());
+
+  function viewedKey() {
     try {
-      const d = parseKey(sessionStorage.getItem(DATE_KEY));
-      if (d && utcDay(d) < utcDay(new Date())) return d;
-    } catch (_) {}
-    return new Date();
+      const k = sessionStorage.getItem(DATE_KEY);
+      return isBeforeToday(parseKey(k)) ? k : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function isDone(key) {
+    return store.get(DONE_PREFIX + key) === "1";
+  }
+
+  function pinnedKey() {
+    const k = store.get(PIN_KEY);
+    return isBeforeToday(parseKey(k)) && !isDone(k) ? k : null;
+  }
+
+  // "view" (opened from History), "carried" (an unfinished brief from an
+  // earlier day) or "today".
+  function mode() {
+    return viewedKey() ? "view" : pinnedKey() ? "carried" : "today";
+  }
+
+  function activeDate() {
+    const k = viewedKey() || pinnedKey();
+    return k ? parseKey(k) : new Date();
   }
 
   function isPast() {
-    return utcDay(activeDate()) < utcDay(new Date());
+    return mode() !== "today";
+  }
+
+  // Starting a brief keeps it on screen until it's finished.
+  function pin(key = dateKey()) {
+    if (!isDone(key)) store.set(PIN_KEY, key);
+  }
+  function pinnedRaw() {
+    return store.get(PIN_KEY);
+  }
+
+  // Finishing Review releases the brief.
+  function markDone(key = dateKey()) {
+    store.set(DONE_PREFIX + key, "1");
+    if (store.get(PIN_KEY) === key) store.remove(PIN_KEY);
   }
 
   function openDay(key, hash) {
     try {
-      if (key === dateKey(new Date())) sessionStorage.removeItem(DATE_KEY);
-      else sessionStorage.setItem(DATE_KEY, key);
+      if (key === dateKey(new Date())) {
+        sessionStorage.removeItem(DATE_KEY);
+        store.remove(PIN_KEY);
+      } else {
+        sessionStorage.setItem(DATE_KEY, key);
+      }
     } catch (_) {
       return false;
     }
     location.hash = hash || "";
     location.reload();
     return true;
+  }
+
+  // Leave the brief on screen and go to today's.
+  function useToday(hash) {
+    return openDay(dateKey(new Date()), hash);
   }
 
   function today(date = activeDate()) {
@@ -375,5 +431,17 @@
     ].filter(Boolean).join(" ");
   }
 
-  window.DTC = { refNoun, briefLine, today, forDate, dateKey, parseKey, activeDate, isPast, openDay, mobbinUrl, tags, renderMeta };
+  // Every brief from the first one used, oldest first (for History).
+  function allKeys() {
+    const keys = [];
+    for (let d = new Date(2026, 9, 2); utcDay(d) <= utcDay(new Date()); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+      keys.push(dateKey(d));
+    }
+    return keys;
+  }
+
+  window.DTC = {
+    refNoun, briefLine, today, forDate, dateKey, parseKey, activeDate, isPast, mode,
+    openDay, useToday, pin, pinnedRaw, markDone, isDone, allKeys, mobbinUrl, tags, renderMeta,
+  };
 })();

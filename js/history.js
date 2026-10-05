@@ -62,6 +62,14 @@
     num.className = "hist__num";
     num.textContent = "#" + String(day.challenge.id).padStart(3, "0");
     date.append(" ", num);
+    const current = window.DTC.mode() === "carried" && window.DTC.dateKey() === day.dateKey;
+    const started = Object.values(day.done).some(Boolean);
+    if (current || !started) {
+      const chip = document.createElement("span");
+      chip.className = "hist__state" + (current ? " hist__state--current" : "");
+      chip.textContent = current ? "Your current brief" : "Not started";
+      date.append(" ", chip);
+    }
     const brief = document.createElement("p");
     brief.className = "hist__brief";
     brief.textContent = day.challenge.brief;
@@ -115,10 +123,12 @@
     const open = document.createElement("button");
     open.type = "button";
     open.className = "btn btn--sm";
-    open.textContent = day.done.review ? "Open review" : next ? "Continue at " + next[1] : "Open";
+    open.textContent = day.done.review ? "Open review" : !started ? "Start this brief" : next ? "Continue at " + next[1] : "Open";
+    if (!started) open.className = "btn btn--sm btn--ghost";
     open.addEventListener("click", () => {
       const hash = "#" + (day.done.review ? "review" : next ? next[0] : "review");
-      if (isToday && !window.DTC.isPast()) {
+      const shownNow = window.DTC.dateKey() === day.dateKey;
+      if (shownNow) {
         location.hash = hash;
       } else if (!window.DTC.openDay(day.dateKey, hash)) {
         open.textContent = "Can't open past days in this browser";
@@ -132,24 +142,28 @@
     body.append(thumbs, side);
 
     li.append(head, progress, body);
+    if (!started) li.classList.add("hist__day--empty");
     return li;
   }
 
   async function render() {
     urls.forEach((u) => URL.revokeObjectURL(u));
     urls = [];
+    // Every brief so far, started or not, newest first.
     const keys = await window.DTCStore.keys();
-    const dates = [...new Set(keys.map((k) => k.split(":")[0]).filter((d) => window.DTC.parseKey(d)))]
-      .sort()
-      .reverse();
     const todayKey = window.DTC.dateKey(new Date());
-    const days = (await Promise.all(dates.map(loadDay)))
-      .filter((d) => Object.values(d.done).some(Boolean));
+    const dates = [...new Set([
+      ...window.DTC.allKeys(),
+      ...keys.map((k) => k.split(":")[0]).filter((d) => window.DTC.parseKey(d) && d <= todayKey),
+    ])].sort().reverse();
+    const days = await Promise.all(dates.map(loadDay));
+    days.forEach((d) => { if (d.done.review) window.DTC.markDone(d.dateKey); });
+    const practised = days.filter((d) => Object.values(d.done).some(Boolean)).length;
 
     const list = $("hist-list");
     list.replaceChildren(...days.map((d) => renderDay(d, d.dateKey === todayKey)));
     $("hist-empty").hidden = days.length > 0;
-    $("hist-count").textContent = days.length + (days.length === 1 ? " day practised" : " days practised");
+    $("hist-count").textContent = practised + (practised === 1 ? " day practised" : " days practised");
   }
 
   window.DTCPages.on("history", render);
