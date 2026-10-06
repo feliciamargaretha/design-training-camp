@@ -1,4 +1,4 @@
-// Study round: today's Mobbin references, a 10-minute timer and your notes.
+// Study round: the brief's Mobbin references, a 10-minute timer and your notes.
 (function () {
   const root = document.querySelector('[data-page="study"]');
   const $ = (id) => document.getElementById(id);
@@ -74,7 +74,7 @@
       } else {
         loaded = false; // try again next time the round opens
         refs.hidden = true;
-        $("refs-title").textContent = "Today's pattern: " + challenge.name + ". Plenty to notice.";
+        $("refs-title").textContent = "This brief's pattern: " + challenge.name + ". Plenty to notice.";
         $("refs-note").textContent = "References from Mobbin";
         $("refs-empty").hidden = false;
         $("refs-empty-text").textContent = message;

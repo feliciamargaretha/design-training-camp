@@ -177,6 +177,9 @@
   ];
   const GENERATOR_START = Date.UTC(2026, 9, 3); // 3 Oct 2026; earlier days use LEGACY
   const NUMBER_ZERO = Date.UTC(2026, 8, 27); // so 2 Oct 2026 is challenge 005
+  // From Monday 5 Oct 2026 there's one brief per week (Monday to Sunday).
+  // The first three days were daily and stay that way in History.
+  const WEEKLY_START = Date.UTC(2026, 9, 5);
 
   // ---------- Generator ----------
   function rng(seed) {
@@ -209,8 +212,17 @@
     return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
   }
 
-  function forDate(date) {
+  // The first day of the brief's period: the Monday of its week, or the day
+  // itself before weekly briefs began.
+  function periodStart(date) {
     const day = utcDay(date);
+    if (day < WEEKLY_START) return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const back = (new Date(day).getUTCDay() + 6) % 7; // days since Monday
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() - back);
+  }
+
+  function forDate(date) {
+    const day = utcDay(periodStart(date));
     const id = Math.round((day - NUMBER_ZERO) / DAY);
     const dayNumber = Math.floor(day / DAY);
 
@@ -228,19 +240,23 @@
     }
 
     const n = Math.round((day - GENERATOR_START) / DAY);
+    const week = day >= WEEKLY_START ? Math.round((day - WEEKLY_START) / (7 * DAY)) + 1 : null;
     const r = rng(dayNumber * 2654435761);
-    // Rotate B2C, B2B and landing sections so each week has a mix.
-    const kind = ["b2c", "section", "b2b"][n % 3];
+    // Rotate B2C, landing sections and B2B. The first daily briefs (3–4 Oct)
+    // used slot 0 of B2C and sections and week 1 used slot 0 of B2B, so the
+    // weekly rotation moves on from there and doesn't repeat them.
+    const kind = week ? ["b2b", "b2c", "section"][(week - 1) % 3] : ["b2c", "section", "b2b"][n % 3];
+    const slot = week ? Math.floor((week - 1) / 3) + (kind === "b2b" ? 0 : 1) : Math.floor(n / 3);
     const theme = r() < 0.4 ? "dark" : "light";
     const style = inCycle(kind === "b2b" ? STYLES.filter((x) => x.b2b) : STYLES, n, 11).name;
     const modeWords = theme === "dark" ? "dark mode" : "light mode";
 
     if (kind === "section") {
-      const brand = inCycle(BRANDS, Math.floor(n / 3), 37);
+      const brand = inCycle(BRANDS, slot, 37);
       const fits = SECTIONS.filter((x) => brand.sections.includes(x[0]));
       const [name, what, query] = pick(r, fits);
       return {
-        id, kind, theme, style, name: name + " section",
+        id, week, kind, theme, style, name: name + " section",
         industry: brand.industry,
         platform: "web",
         tool: "search_sections",
@@ -252,10 +268,10 @@
     }
 
     const pool = kind === "b2c" ? B2C : B2B;
-    const product = inCycle(pool, Math.floor(n / 3), kind === "b2c" ? 41 : 53);
+    const product = inCycle(pool, slot, kind === "b2c" ? 41 : 53);
     const [name, what, goal] = pick(r, product.screens);
     return {
-      id, kind, theme, style, name,
+      id, week, kind, theme, style, name,
       industry: product.industry,
       platform: kind === "b2c" ? "ios" : "web",
       tool: "search_screens",
@@ -287,12 +303,15 @@
     return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
   }
 
+  // The key work is saved under: the first day of the brief's period.
   function dateKey(date = activeDate()) {
+    const d = periodStart(date);
     const pad = (n) => String(n).padStart(2, "0");
-    return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
   }
 
-  const isBeforeToday = (d) => d && utcDay(d) < utcDay(new Date());
+  // Whether a period is before the current one (this week).
+  const isBeforeToday = (d) => !!d && dateKey(d) < dateKey(new Date());
 
   function viewedKey() {
     try {
@@ -432,16 +451,23 @@
   }
 
   // Every brief from the first one used, oldest first (for History).
+  // Every brief period so far: the first daily ones, then one per week.
   function allKeys() {
     const keys = [];
     for (let d = new Date(2026, 9, 2); utcDay(d) <= utcDay(new Date()); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
-      keys.push(dateKey(d));
+      const k = dateKey(d);
+      if (keys[keys.length - 1] !== k) keys.push(k);
     }
     return keys;
   }
 
+  // How a brief is named: "Week 3", or "#006" for the early daily ones.
+  function label(challenge) {
+    return challenge.week ? "Week " + challenge.week : "#" + String(challenge.id).padStart(3, "0");
+  }
+
   window.DTC = {
     refNoun, briefLine, today, forDate, dateKey, parseKey, activeDate, isPast, mode,
-    openDay, useToday, pin, pinnedRaw, markDone, isDone, allKeys, mobbinUrl, tags, renderMeta,
+    openDay, useToday, pin, pinnedRaw, markDone, isDone, allKeys, label, mobbinUrl, tags, renderMeta,
   };
 })();

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Design Training Camp</title>
-  <meta name="description" content="A little practice, every day. Design, study, compare, redesign, review.">
+  <meta name="description" content="A little practice, every week. Design, study, compare, redesign, review.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
 <body>
   <main class="frame" data-page="home">
     <header class="topbar">
-      <p class="eyebrow">A little practice. Every day.</p>
+      <p class="eyebrow">A little practice. Every week.</p>
       <div class="topbar__right">
         <a class="text-link" href="#history">History</a>
         <p class="pill">Your pace · 5 rounds · 1 better designer</p>
@@ -29,11 +29,11 @@
           A stronger designer on the other side.
         </p>
         <div class="hero__actions">
-          <a class="btn" href="#design" id="start">Start today's challenge</a>
-          <span class="hint">Your daily creative workout</span>
+          <a class="btn" href="#design" id="start">Start this week's challenge</a>
+          <span class="hint">Your weekly creative workout</span>
         </div>
         <div class="brief" id="brief" hidden>
-          <p class="brief__label"><span id="brief-label">Today's brief</span> · <span id="brief-number"></span></p>
+          <p class="brief__label"><span id="brief-label">This week's brief</span> · <span id="brief-number"></span></p>
           <p class="brief__text" id="brief-text"></p>
           <div class="brief-meta" id="brief-meta"></div>
         </div>
@@ -110,7 +110,7 @@
     </div>
 
     <p class="eyebrow" data-el="challenge-label">Your challenge</p>
-    <p class="challenge challenge--with-meta" data-el="challenge-brief">Design today's screen.</p>
+    <p class="challenge challenge--with-meta" data-el="challenge-brief">Design this week's screen.</p>
     <div class="brief-meta brief-meta--page" data-el="brief-meta"></div>
 
     <section class="workspace" data-el="workspace" aria-label="Your design">
@@ -168,7 +168,7 @@
     </div>
 
     <div class="refs-head">
-      <p class="refs-head__title" id="refs-title">Today's references. Plenty to notice.</p>
+      <p class="refs-head__title" id="refs-title">This week's references. Plenty to notice.</p>
       <p class="refs-head__note" id="refs-note">Finding references on Mobbin…</p>
     </div>
 
@@ -178,7 +178,7 @@
 
     <div class="refs-empty" id="refs-empty" hidden>
       <p id="refs-empty-text">Mobbin isn't connected here yet.</p>
-      <a class="btn btn--sm" id="refs-mobbin" href="https://mobbin.com" target="_blank" rel="noopener">Browse today's pattern on Mobbin ↗</a>
+      <a class="btn btn--sm" id="refs-mobbin" href="https://mobbin.com" target="_blank" rel="noopener">Browse this brief's pattern on Mobbin ↗</a>
     </div>
 
     <section class="notice" aria-labelledby="notice-title">
@@ -231,7 +231,7 @@
             <svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/></svg>
           </span>
           <div class="analysis__titles">
-            <h2 class="analysis__headline" id="cmp-headline">A closer look at today's screens.</h2>
+            <h2 class="analysis__headline" id="cmp-headline">A closer look at this week's screens.</h2>
             <p class="analysis__meta"><span id="cmp-meta">Claude's analysis</span>
               <button type="button" class="text-btn text-btn--inline" id="cmp-rerun" hidden>Run again</button></p>
           </div>
@@ -279,7 +279,7 @@
     </div>
 
     <p class="eyebrow" id="rd-challenge-label">Your challenge</p>
-    <p class="challenge challenge--with-meta" id="rd-challenge-brief">Design today's screen.</p>
+    <p class="challenge challenge--with-meta" id="rd-challenge-brief">Design this week's screen.</p>
     <div class="brief-meta brief-meta--page" id="rd-brief-meta"></div>
 
     <section class="carry" id="rd-carry" aria-labelledby="rd-carry-title" hidden>
@@ -375,7 +375,7 @@
     </div>
 
     <div class="review-head">
-      <p class="refs-head__title">Your redesign, checked against today's analysis.</p>
+      <p class="refs-head__title">Your redesign, checked against this brief's analysis.</p>
       <p class="refs-head__note" id="rv-cell-hint" hidden>Click any cell to change it</p>
     </div>
 
@@ -446,7 +446,7 @@
       </div>
 
       <section class="rv-summary" id="rv-summary" aria-labelledby="rv-summary-title" hidden>
-        <h2 class="rv-summary__title" id="rv-summary-title">Today's takeaway</h2>
+        <h2 class="rv-summary__title" id="rv-summary-title">This week's takeaway</h2>
         <div class="rv-summary__grid">
           <div class="rv-summary__lead">
             <p class="rv-summary__label">Strongest exploration</p>
@@ -464,7 +464,7 @@
         </div>
         <div class="rv-summary__foot">
           <p class="rv-summary__source" id="rv-summary-source"></p>
-          <a class="btn btn--sm" href="#" id="rv-done">Done for today</a>
+          <a class="btn btn--sm" href="#" id="rv-done">Done for this week</a>
         </div>
       </section>
     </div>
@@ -479,12 +479,12 @@
     <div class="round-title">
       <h1 class="round-title__name">History</h1>
     </div>
-    <p class="hist-lede">Every brief so far. Open a day to see its rounds, finish what you started, or pick up a brief you skipped.</p>
+    <p class="hist-lede">Every brief so far. Open one to see its rounds, finish what you started, or pick up a brief you skipped.</p>
 
     <ol class="hist" id="hist-list" aria-live="polite"></ol>
     <div class="analysis__status" id="hist-empty" hidden>
-      <p>No past days yet. Your work is saved in this browser as you go, and every day you practise shows up here.</p>
-      <a class="btn btn--sm" href="#design">Start today's challenge</a>
+      <p>Nothing here yet. Your work is saved in this browser as you go, and every brief you practise shows up here.</p>
+      <a class="btn btn--sm" href="#design">Start this week's challenge</a>
     </div>
   </main>
 

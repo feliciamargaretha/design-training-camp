@@ -11,7 +11,7 @@
   let workspace = null;
   let saveTimer = null;
 
-  $("challenge-label").textContent = "Your challenge · " + String(challenge.id).padStart(3, "0");
+  $("challenge-label").textContent = "Your challenge · " + window.DTC.label(challenge);
   $("challenge-brief").textContent = challenge.brief;
   window.DTC.renderMeta($("brief-meta"), challenge);
 
@@ -52,7 +52,7 @@
   // Starting a brief keeps it on screen until its Review is finished.
   window.DTCPages.on("design", () => window.DTC.pin(window.DTC.dateKey()));
 
-  // Restore today's work.
+  // Restore saved work for this brief.
   window.DTCStore.get(storeKey).then((saved) => {
     if (saved && saved.challengeId === challenge.id) {
       intent.value = saved.intent || "";

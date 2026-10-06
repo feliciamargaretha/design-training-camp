@@ -1,5 +1,5 @@
 // Review round: your original design and each redesign exploration, checked
-// against today's Compare observations. Claude fills the grid when it can see
+// against the brief's Compare observations. Claude fills the grid when it can see
 // images; otherwise you do, and Claude writes the summary from your answers.
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -1028,7 +1028,7 @@
 
   summaryBtn.addEventListener("click", () => run("text"));
   $("rv-range-retry").addEventListener("click", () => checkRange(true));
-  // Finished an earlier day's brief: move on to today's.
+  // Finished an earlier brief: move on to this week's.
   $("rv-done").addEventListener("click", (e) => {
     if (window.DTC.mode() === "today") return;
     e.preventDefault();
@@ -1047,7 +1047,7 @@
     noImages.hidden = true;
     if (!analysis) {
       $("rv-body").hidden = true;
-      setStatus("Review checks your redesign against today's analysis, so finish Compare first.", { label: "Open Compare", href: "#compare" });
+      setStatus("Review checks your redesign against the brief's analysis, so finish Compare first.", { label: "Open Compare", href: "#compare" });
       return;
     }
     if (!columns.some((c) => c.exploration)) {

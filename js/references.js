@@ -1,4 +1,4 @@
-// Reference screens for today's brief, from the viewer's Mobbin connector.
+// Reference screens for the brief, from the viewer's Mobbin connector.
 // Only works when the site runs as a claude.ai artifact (that's where the
 // connector lives). Everywhere else the page falls back to a Mobbin link.
 //
@@ -10,7 +10,7 @@
   const COUNT = 5;
 
   const MESSAGES = {
-    unavailable: "Mobbin references load when this site is open inside Claude. Open today's pattern on Mobbin and study 4–5 screens side by side.",
+    unavailable: "Mobbin references load when this site is open inside Claude. Open the brief's pattern on Mobbin and study 4–5 screens side by side.",
     server_not_connected: "Mobbin isn't connected to your Claude account. Add it in claude.ai Settings → Connectors, then reload.",
     selection_required: "You have more than one Mobbin connector. Choose one when Claude asks, then reload.",
     needs_reauth: "Your Mobbin connection expired. Reconnect Mobbin in claude.ai Settings → Connectors, then reload.",
@@ -18,7 +18,7 @@
     blocked_by_policy: "Your organization blocks Mobbin searches from pages like this one.",
     approval_required: "Your organization requires approval for each Mobbin search, which this page can't ask for.",
     server_unavailable: "Mobbin didn't answer. Reload in a minute to try again.",
-    empty: "Mobbin found no references for today's brief.",
+    empty: "Mobbin found no references for this brief.",
   };
 
   function queryFor(challenge) {
@@ -37,7 +37,7 @@
       limit: COUNT + 3,
       image_format: "jpg",
       output_destination: "code",
-      task_intent: "Show real reference screens for a daily UI design practice challenge.",
+      task_intent: "Show real reference screens for a weekly UI design practice challenge.",
     };
     if (!sections) {
       input.platform = challenge.platform;

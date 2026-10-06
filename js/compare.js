@@ -1,4 +1,4 @@
-// Compare round: Claude's analysis of today's references (and your design),
+// Compare round: Claude's analysis of the brief's references (and your design),
 // set against what you noticed in Study.
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -267,7 +267,7 @@
     "colours and contrast) and Claude analyzed that reading. It can misread a word, and it can't judge icons or imagery.";
 
   const TEXT_ONLY_NOTE =
-    "This view of Claude can't send images, so Claude wrote this from today's brief without seeing the screens or your design. " +
+    "This view of Claude can't send images, so Claude wrote this from the brief without seeing the screens or your design. " +
     "Check each point against the references in Study. Opening this page at claude.ai in a web browser may let Claude analyze the screens themselves.";
 
   const ERRORS = {
@@ -378,7 +378,7 @@
   }
 
   async function askWithoutImages(sample, refs, cache) {
-    setStatus("Claude is writing an analysis from today's brief…");
+    setStatus("Claude is writing an analysis from the brief…");
     const raw = await sample.json(promptWithoutImages(refs), {
       modelTier: "default",
       cache,
@@ -393,7 +393,7 @@
     rerun.hidden = true;
     renderSkeleton();
     $("cmp-meta").textContent = "Claude's analysis";
-    setStatus("Getting today's Mobbin references…");
+    setStatus("Getting the Mobbin references…");
 
     try {
       const refsRes = await window.DTCRefs.load(challenge);

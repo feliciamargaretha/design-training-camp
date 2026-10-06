@@ -8,7 +8,7 @@
   const LETTERS = "ABCDEFGHIJ";
   const MAX = LETTERS.length;
 
-  $("rd-challenge-label").textContent = "Your challenge · " + String(challenge.id).padStart(3, "0");
+  $("rd-challenge-label").textContent = "Your challenge · " + window.DTC.label(challenge);
   $("rd-challenge-brief").textContent = challenge.brief;
   window.DTC.renderMeta($("rd-brief-meta"), challenge);
 

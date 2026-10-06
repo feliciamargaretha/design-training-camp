@@ -1,4 +1,4 @@
-// History: every day with saved work, newest first. Opening a day loads all
+// History: every brief so far, newest first. Opening one loads all
 // its rounds as they were left.
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -55,13 +55,14 @@
     head.className = "hist__head";
     const date = document.createElement("p");
     date.className = "hist__date";
-    date.textContent = isToday
-      ? "Today"
-      : day.date.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
-    const num = document.createElement("span");
-    num.className = "hist__num";
-    num.textContent = "#" + String(day.challenge.id).padStart(3, "0");
-    date.append(" ", num);
+    // Named, not dated: "Week 3" (or "#006" for the early daily briefs).
+    date.textContent = window.DTC.label(day.challenge);
+    if (isToday) {
+      const now = document.createElement("span");
+      now.className = "hist__state hist__state--now";
+      now.textContent = "This week";
+      date.append(" ", now);
+    }
     const current = window.DTC.mode() === "carried" && window.DTC.dateKey() === day.dateKey;
     const started = Object.values(day.done).some(Boolean);
     if (current || !started) {

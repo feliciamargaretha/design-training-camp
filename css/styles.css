@@ -1618,6 +1618,7 @@ button.btn { border: 0; font: inherit; font-size: 12px; cursor: pointer; }
   color: var(--ink-mute);
 }
 .hist__state--current { border: 1px solid var(--lime-dot); background: var(--lime); color: var(--ink); }
+.hist__state--now { border: 1px solid var(--ink); color: var(--ink); }
 .hist__day--empty { background: transparent; }
 .hist__day--empty .hist__rounds { display: none; }
 .btn--ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }

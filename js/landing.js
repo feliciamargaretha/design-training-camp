@@ -4,13 +4,13 @@
   const mode = window.DTC.mode();
 
   document.getElementById("brief-label").textContent =
-    mode === "carried" ? "Your current brief" : mode === "view" ? "This day's brief" : "Today's brief";
-  document.getElementById("brief-number").textContent = "#" + String(challenge.id).padStart(3, "0");
+    mode === "carried" ? "Your current brief" : mode === "view" ? "Earlier brief" : "This week's brief";
+  document.getElementById("brief-number").textContent = window.DTC.label(challenge);
   document.getElementById("brief-text").textContent = challenge.brief;
   window.DTC.renderMeta(document.getElementById("brief-meta"), challenge);
   document.getElementById("brief").hidden = false;
   if (mode === "carried") document.getElementById("start").textContent = "Continue your challenge";
-  if (mode === "view") document.getElementById("start").textContent = "Open this day's challenge";
+  if (mode === "view") document.getElementById("start").textContent = "Open this brief";
 
   // Fetch the Mobbin references in the background so Study opens with them
   // ready. They stay hidden until then.

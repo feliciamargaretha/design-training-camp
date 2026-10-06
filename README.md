@@ -1,6 +1,6 @@
 # Design Training Camp
 
-A little practice, every day. A static site for training your visual design eye in five rounds:
+A little practice, every week. A static site for training your visual design eye in five rounds:
 
 1. **Design** (no timer). Get the daily brief, design it in Figma and upload a screenshot.
 2. **Study** (10 min). Look at real screens for the same brief from Mobbin and take notes.
@@ -9,18 +9,21 @@ A little practice, every day. A static site for training your visual design eye 
 5. **Review** (no timer). Check your original design and each exploration against the
    observations, then get a summary: strongest exploration, what improved, what to practice next.
 
-## Daily briefs
+## Weekly briefs
 
-`js/challenges.js` builds one brief per day from curated lists, seeded by the date so a day
-always gets the same brief. Days rotate between a B2C mobile screen (1–2 screens), a B2B
-desktop screen and a landing page section (hero, features, pricing, FAQ…), each with an
-industry, light or dark mode and a visual style. Landing page sections pull references with
-Mobbin's section search; screens use screen search.
+`js/challenges.js` builds one brief per week (Monday to Sunday), named Week 1, Week 2…,
+from curated lists. Weeks rotate between a B2B desktop screen, a B2C mobile screen (1–2
+screens) and a landing page section (hero, features, pricing, FAQ…), each with an industry,
+light or dark mode and a visual style. Landing page sections pull references with Mobbin's
+section search; screens use screen search. The first three briefs (2–4 Oct 2026) were daily
+and keep their numbers (#005–#007).
+
+A brief you start stays on screen, even into the next week, until you finish its Review.
 
 ## History
 
-`#history` lists every day with saved work. Opening a past day remembers that date for the
-browser tab and reloads, so every round shows that day's work; a banner leads back to today.
+`#history` lists every brief so far, started or not. Opening an earlier one remembers it for
+the browser tab and reloads, so every round shows its work; a banner leads back to this week.
 
 ## How it's built
 

@@ -1,12 +1,10 @@
-// Says which brief is on screen when it isn't today's, with a way to today's.
+// Says which brief is on screen when it isn't this week's, with a way back to it.
 // Also, once: picks up a brief started on an earlier day and not finished.
 (function () {
   const DTC = window.DTC;
   const mode = DTC.mode();
   const challenge = DTC.today();
-  const date = DTC.activeDate();
-  const num = (c) => "#" + String(c.id).padStart(3, "0");
-  const dayName = (d) => d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  const num = (c) => DTC.label(c);
 
   if (mode !== "today") {
     const todays = DTC.forDate(new Date());
@@ -15,9 +13,8 @@
     bar.setAttribute("role", "status");
     const text = document.createElement("p");
     text.textContent = mode === "carried"
-      ? "You're still on " + num(challenge) + " · " + challenge.name + ", from " + dayName(date) +
-        ". It stays until you finish its Review."
-      : "You're looking at " + dayName(date) + " · Challenge " + num(challenge) + " · " + challenge.name;
+      ? "You're still on " + num(challenge) + " · " + challenge.name + ". It stays until you finish its Review."
+      : "You're looking at " + num(challenge) + " · " + challenge.name;
     const links = document.createElement("div");
     links.className = "day-banner__links";
     const history = document.createElement("a");
@@ -25,7 +22,7 @@
     history.textContent = "History";
     const back = document.createElement("button");
     back.type = "button";
-    back.textContent = mode === "carried" ? "Switch to today's brief (" + num(todays) + ")" : "Back to today";
+    back.textContent = mode === "carried" ? "Switch to this week's brief (" + num(todays) + ")" : "Back to this week";
     back.addEventListener("click", () => DTC.useToday(""));
     links.append(history, back);
     bar.append(text, links);
