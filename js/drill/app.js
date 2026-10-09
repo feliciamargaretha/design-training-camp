@@ -519,9 +519,18 @@
     real.append(cards);
     const fill = (res) => {
       cards.replaceChildren(...res.products.map(refCard));
-      if (res.status !== "ok") real.append(h("p", { class: "pd-note", text: res.products.some((p) => p.found)
-        ? "Live screens didn't load here, so these palettes come from Mobbin screens measured when the brief was written."
-        : refsMessage(res.status) }));
+      if (res.status === "ok") return;
+      // Say exactly why the screens are missing, and offer another try.
+      const why = res.status === "unavailable"
+        ? "The screens only load in the Claude version of this page (claude.ai/artifact/1hhHv5iohQzNfcs4mwJ9nS), where Mobbin is connected. Here, the cards show the palettes measured from those screens earlier."
+        : refsMessage(res.status) + " Meanwhile, the cards show palettes measured from Mobbin screens earlier.";
+      real.append(h("div", { class: "pd-refs-why" },
+        h("p", { class: "pd-note", text: why }),
+        res.status === "unavailable" ? null : h("button", { type: "button", class: "btn btn--sm btn--ghost", text: "Try Mobbin again", onclick: async () => {
+          await window.PDStore.set("refs:" + brief.id, null);
+          refsPromise = null; refsResult = null; refsFor = null;
+          render();
+        } })));
     };
     if (refsResult && refsFor === brief.id) {
       fill(refsResult);
@@ -587,8 +596,8 @@
       server_not_connected: "Mobbin isn't connected to your Claude account. Add it in claude.ai Settings → Connectors, then reload.",
       needs_reauth: "Your Mobbin connection expired. Reconnect it in claude.ai Settings → Connectors, then reload.",
       not_granted: "This page isn't allowed to use Mobbin. Allow it when Claude asks, then reload.",
-      empty: "Mobbin had no screens for these products today. Your screen is still measured and analyzed.",
-    })[status] || "Mobbin screens couldn't load (" + status + "). Your screen is still measured and analyzed.";
+      empty: "Mobbin's search didn't return these apps' screens this time.",
+    })[status] || "Mobbin's search failed (" + status + ").";
   }
 
   function refCard(p) {
