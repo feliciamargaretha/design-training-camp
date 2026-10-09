@@ -76,9 +76,10 @@ hidden until the reveal. A skipped day is just skipped. Twenty minutes, on a clo
 keeps counting past zero:
 
 1. **Brief**: product, audience, positioning, personality, light or dark, where the color must work.
-2. **Feel words**: three words, each with the color decision it implies.
-3. **Base colors**: 3–5 hex values (neutral, primary, optional accent, status colors when the
-   screen has states). `js/drill/color.js` builds a 10-stop OKLCH scale for each on one shared
+2. **Feel words**: any three words, plus a free-text box explaining how they shape the colors.
+3. **Palette**: 3–5 colors picked freely, each optionally tagged neutral, primary, accent or
+   status (the tags only tell the checks which colors are surfaces and which are statuses).
+   `js/drill/color.js` builds a 10-stop OKLCH scale for each on one shared
    lightness ladder (0.97 … 0.22); hue holds, chroma tapers to both ends, colors are
    gamut-mapped by lowering chroma. The exact hex replaces its nearest stop.
 4. **Color the screen**: one of 8 grayscale templates (`js/drill/templates.js`) with

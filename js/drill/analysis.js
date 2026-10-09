@@ -9,12 +9,12 @@
     try { return window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch (_) { return null; }
   }
 
-  function dataBlock({ brief, feel, bases, colors, checks, refs }) {
+  function dataBlock({ brief, feel, why, bases, colors, checks, refs }) {
     const lines = [];
     lines.push("BRIEF: " + brief.what + " " + brief.positioning + " Personality: " + brief.personality + " " + brief.avoid + " Mode: " + brief.mode + ". Screen: " + brief.where);
-    lines.push("", "FEEL WORDS (each with the color decision the learner made for it):");
-    feel.forEach((f) => lines.push("- " + f.word + ": " + f.decision));
-    lines.push("", "BASE COLORS the learner picked (exact hex; OKLCH measured):");
+    lines.push("", "FEEL WORDS the learner chose: " + (feel.length ? feel.join(", ") : "none written"));
+    lines.push("THE LEARNER'S OWN EXPLANATION of how these words shape the colors: " + (why ? '"' + why.replace(/\s+/g, " ") + '"' : "none written"));
+    lines.push("", "PALETTE the learner picked (exact hex; OKLCH measured; the tag is the learner's own, \"color\" means untagged):");
     bases.forEach((b) => lines.push("- " + b.label + " (" + b.kind + "): " + b.hex + " · L " + b.fmt.L + " · C " + b.fmt.C + " · H " + b.fmt.H));
     lines.push("", "THE LEARNER'S SCREEN, each color used (scale and stop, hex, OKLCH, share of the screen) and the elements using it:");
     colors.forEach((c) => lines.push("- " + c.label + ": " + c.hex + " · L " + c.fmt.L + " · C " + c.fmt.C + " · H " + c.fmt.H + " · share " + c.fmt.share + " · used for: " + c.roles.join(", ")));
@@ -44,7 +44,7 @@
       "1. real: for each real product with a screen, one line on its lightness range, which color owns saturation, and that color's share. Then 'shared': what they have in common; 'split': where they differ. If a product has no screen, line: \"No screen to measure.\"",
       "2. right: up to 3 things the learner got right, each tied to one measured value from the table or checks.",
       "3. harmony: verdict \"harmonious\" or \"not yet\" with one line why. If not yet, name the ONE color to change in 'color' and in 'change' the dimension (lightness, chroma or hue) and direction (up/down, warmer/cooler), no new numbers.",
-      "4. feel: one line per feel word saying whether the palette held or broke it, using the decision the learner wrote.",
+      "4. feel: one line per feel word saying whether the palette held or broke it, judged against the learner's own explanation where it covers that word.",
       "5. next: one line, the one thing to practice next.",
       "Hex codes count as numbers: only use hex codes that appear above.",
       note || "",

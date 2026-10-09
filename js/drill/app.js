@@ -1,7 +1,7 @@
-// Palette Drill: one brief a day, twenty minutes. Read the brief, write three
-// feel words, pick 3–5 base colors, color the grayscale screen from their
-// scales, lock it, then see the real product, your measured screen and
-// Claude's analysis.
+// Palette Drill: one brief a day, twenty minutes. Read the brief, pick three
+// feel words and explain them, build a palette of 3–5 colors (tag their roles
+// whenever you like), color the grayscale screen from their scales, lock it,
+// then see the real product, your measured screen and Claude's analysis.
 (function () {
   const C = window.PDColor;
   const TPL = window.PDTemplates;
@@ -9,7 +9,7 @@
   const STEPS = [
     ["brief", "Brief", ""],
     ["feel", "Feel words", "3 min"],
-    ["colors", "Base colors", "5 min"],
+    ["colors", "Palette", "5 min"],
     ["screen", "Color the screen", "10 min"],
     ["reveal", "Reveal", ""],
   ];
@@ -42,8 +42,8 @@
   function blank() {
     return {
       briefId: brief.id, started: null, step: "brief",
-      feel: [0, 1, 2].map(() => ({ word: "", decision: "" })),
-      draft: { bases: { neutral: "", primary: "", accent: "", s1: "", s2: "" }, useAccent: true, assign: {}, split: {} },
+      feel: ["", "", ""], why: "",
+      draft: { colors: [newColor(), newColor(), newColor()], assign: {}, split: {} },
       editing: true, versions: [],
     };
   }
@@ -52,7 +52,7 @@
     key = k;
     brief = window.PDBriefs.forDate(window.PDBriefs.parse(k));
     const saved = await window.PDStore.get("day:" + k);
-    state = saved && saved.briefId === brief.id ? saved : blank();
+    state = saved && saved.briefId === brief.id ? migrate(saved) : blank();
     state.versions.forEach((v) => { if (v.analysis && v.analysis.status === "loading") v.analysis = null; });
     selected = null;
     shownVersion = null;
@@ -64,24 +64,41 @@
     saveTimer = setTimeout(() => window.PDStore.set("day:" + key, state), 250);
   }
 
-  // ---------- Base colors and scales ----------
-  function slots() {
-    const s = [
-      { id: "neutral", label: "Neutral", kind: "neutral", note: "Backgrounds, cards, text and lines come from this scale." },
-      { id: "primary", label: "Primary", kind: "primary", note: "The brand color: main actions and key moments." },
-    ];
-    const statuses = brief.statuses || [];
-    s.push({ id: "accent", label: "Accent", kind: "accent", optional: statuses.length > 0, note: statuses.length ? "Optional. A second voice for highlights." : "A second voice for highlights." });
-    statuses.forEach((name, i) => s.push({ id: "s" + (i + 1), label: name, kind: "status", note: "Status color." }));
-    return s;
+  // ---------- Palette and scales ----------
+  // The palette is 3–5 free colors. Each can be tagged neutral, primary,
+  // accent or status at any time; the tags only tell the checks which colors
+  // are surfaces and which are status colors.
+  const MIN = 3, MAX = 5;
+  const ROLE_NAMES = { neutral: "Neutral", primary: "Primary", accent: "Accent", status: "Status" };
+  function newColor() {
+    return { id: "c" + Math.random().toString(36).slice(2, 8), hex: "", role: "" };
   }
-  function activeSlots(d) {
-    return slots().filter((s) => !(s.optional && !d.useAccent));
+
+  // Drafts saved before the palette was free: { bases: {neutral, primary, …} }.
+  function migrateDraft(d) {
+    if (!d || d.colors) return d;
+    const roles = { neutral: "neutral", primary: "primary", accent: "accent", s1: "status", s2: "status" };
+    d.colors = Object.keys(roles).filter((k) => d.bases && d.bases[k] && (k !== "accent" || d.useAccent !== false)).map((k) => ({ id: k, hex: d.bases[k], role: roles[k] }));
+    delete d.bases; delete d.useAccent;
+    return d;
   }
+  function migrate(st) {
+    migrateDraft(st.draft);
+    (st.versions || []).forEach((v) => migrateDraft(v.draft));
+    if (st.feel && typeof st.feel[0] === "object") {
+      st.why = st.why || st.feel.filter((f) => f.word && f.decision).map((f) => f.word + ": " + f.decision).join("\n");
+      st.feel = st.feel.map((f) => f.word || "");
+    }
+    return st;
+  }
+
+  // Labels: the tag ("Primary"), numbered when two share a tag, else "Color 2".
   function scalesFor(d) {
-    return activeSlots(d).map((s) => {
-      const sc = d.bases[s.id] ? C.scale(d.bases[s.id]) : null;
-      return { ...s, scale: sc };
+    const filled = d.colors.filter((c) => c.hex);
+    return filled.map((c, i) => {
+      const same = filled.filter((x) => x.role && x.role === c.role);
+      const label = c.role ? ROLE_NAMES[c.role] + (same.length > 1 ? " " + (same.indexOf(c) + 1) : "") : "Color " + (i + 1);
+      return { id: c.id, label, kind: c.role || "color", scale: C.scale(c.hex) };
     });
   }
   function baseInfo(d) {
@@ -90,6 +107,11 @@
       const b = s.scale.base;
       return { id: s.id, label: s.label, kind: s.kind, hex: b.hex, L: b.L, C: b.C, H: b.H, fmt: { L: f.L(b.L), C: f.C(b.C), H: b.C < 0.002 ? "—" : f.H(b.H) } };
     });
+  }
+  // The scale used for "fill from neutral": the tagged neutral, else the least saturated color.
+  function neutralScale(d) {
+    const sc = scalesFor(d).filter((s) => s.scale);
+    return sc.find((s) => s.kind === "neutral") || sc.slice().sort((a, b) => a.scale.base.C - b.scale.base.C)[0];
   }
 
   // "primary:5" -> color, using a draft or a version.
@@ -161,24 +183,21 @@
   // ---------- 1. Brief ----------
   function viewBrief() {
     const t = TPL.TEMPLATES[brief.template];
-    const sl = slots();
     const rows = [
       ["The product", brief.what],
       ["Positioning", brief.positioning],
       ["Personality", brief.personality + " " + brief.avoid],
       ["Mode", brief.mode === "dark" ? "Dark mode" : "Light mode"],
       ["Where the color must work", brief.where],
-      ["Base colors to pick", sl.map((s) => s.label + (s.optional ? " (optional)" : "")).join(" · ")],
+      ["Your palette", "3–5 colors, picked freely. Tag them neutral, primary, accent or status whenever you like."],
+      (brief.statuses || []).length ? ["States on the screen", brief.statuses.join(" and ") + ", shown " + (t.statusWhere || "on the screen") + ". Color them however you like."] : null,
       ["The hard part", brief.hard],
-    ];
-    const statusCount = (brief.statuses || []).length;
-    const checksRun = 6 + (statusCount >= 2 ? 1 : 0) + 1;
+    ].filter(Boolean);
     return h("div", { class: "pd-panel" },
       head("01", "Today's brief", "", "The product's name stays hidden until the reveal."),
       h("div", { class: "pd-brief" },
         h("div", { class: "pd-brief__tags" },
-          h("span", { class: "pill", text: t.name }), h("span", { class: "pill", text: brief.mode === "dark" ? "Dark" : "Light" }),
-          h("span", { class: "pill", text: checksRun + " of 8 checks run" })),
+          h("span", { class: "pill", text: t.name }), h("span", { class: "pill", text: brief.mode === "dark" ? "Dark" : "Light" })),
         h("dl", { class: "pd-brief__list" }, rows.map(([k, v]) => [h("dt", { text: k }), h("dd", { text: v })]))),
       h("div", { class: "pd-actions" },
         state.started
@@ -220,65 +239,66 @@
   // ---------- 2. Feel words ----------
   function viewFeel() {
     const ro = state.versions.length > 0;
-    const examples = [["Dependable", "so status colors share one lightness."], ["Defiant", "so the primary is the only saturated color."], ["Calm", "so cards sit one small step off the background."]];
+    const examples = ["Defiant", "Plain-spoken", "Calm"];
     return h("div", { class: "pd-panel" },
-      head("02", "Three feel words", "about 3 minutes", "Each word gets a color decision you can check later. Write the decision as “so …”."),
-      h("div", { class: "pd-feel" }, state.feel.map((f, i) => h("div", { class: "pd-feel__row" },
-        h("span", { class: "pd-feel__n", text: String(i + 1) }),
-        h("label", { class: "pd-field" }, h("span", { text: "Word" }),
-          h("input", { type: "text", value: f.word, placeholder: examples[i][0], maxlength: 24, disabled: ro, oninput: (e) => { f.word = e.target.value; save(); } })),
-        h("label", { class: "pd-field pd-field--wide" }, h("span", { text: "Color decision" }),
-          h("input", { type: "text", value: f.decision, placeholder: examples[i][1], maxlength: 140, disabled: ro, oninput: (e) => { f.decision = e.target.value; save(); } }))))),
+      head("02", "Three feel words", "about 3 minutes", "Any three words for how the screen should feel. Then explain, in your own words, how they'll show up in your colors."),
+      h("div", { class: "pd-words" }, state.feel.map((w, i) =>
+        h("label", { class: "pd-field" }, h("span", { text: "Word " + (i + 1) }),
+          h("input", { type: "text", value: w, placeholder: examples[i], maxlength: 24, disabled: ro, oninput: (e) => { state.feel[i] = e.target.value; save(); } })))),
+      h("label", { class: "pd-field pd-why" }, h("span", { text: "Your color decisions" }),
+        h("textarea", { rows: 5, maxlength: 800, disabled: ro, placeholder: "e.g. Defiant: one loud green that nothing else competes with. Calm: lots of white space and greys that barely shift.", oninput: (e) => { state.why = e.target.value; save(); } }, state.why || "")),
       ro ? h("p", { class: "hint", text: "Locked with version 1." }) : null,
       h("div", { class: "pd-actions" },
-        h("button", { type: "button", class: "btn", text: "Pick base colors →", onclick: () => go("colors") }),
-        h("span", { class: "hint", text: state.feel.filter((f) => f.word.trim() && f.decision.trim()).length + " of 3 written" })));
+        h("button", { type: "button", class: "btn", text: "Build your palette →", onclick: () => go("colors") })));
   }
 
-  // ---------- 3. Base colors ----------
+  // ---------- 3. Palette ----------
   function viewColors() {
     const d = state.draft;
     const ro = !state.editing;
     const wrap = h("div", { class: "pd-panel" },
-      head("03", "Pick 3–5 base colors", "about 5 minutes", "Only the hex for each role. The page builds a 10-stop scale from each one, all on the same lightness ladder. Your exact hex sits at its nearest stop."));
+      head("03", "Build your palette", "about 5 minutes", "Pick 3–5 colors. Each gets a 10-stop scale on the same lightness ladder, with your exact hex at its nearest stop. Tag what each one is for whenever you're ready."));
     const list = h("div", { class: "pd-bases" });
-    const refresh = () => { list.replaceChildren(...slots().map(baseRow)); count.textContent = activeSlots(d).filter((s) => d.bases[s.id]).length + " base colors"; save(); };
-    const count = h("span", { class: "hint" });
+    const foot = h("div", { class: "pd-palette-foot" });
+    const refresh = () => { list.replaceChildren(...d.colors.map(colorRow)); drawFoot(); save(); };
 
-    function baseRow(s) {
-      const off = s.optional && !d.useAccent;
-      const sc = !off && d.bases[s.id] ? C.scale(d.bases[s.id]) : null;
-      const hexIn = h("input", { type: "text", class: "pd-hex", value: d.bases[s.id] || "", placeholder: "#000000", maxlength: 7, disabled: ro || off, "aria-label": s.label + " hex",
-        onchange: (e) => { const v = C.normHex(e.target.value); if (v || !e.target.value) { d.bases[s.id] = v || ""; refresh(); } else e.target.classList.add("is-bad"); } });
-      const picker = h("input", { type: "color", class: "pd-picker", value: d.bases[s.id] || "#888888", disabled: ro || off, "aria-label": "Pick " + s.label,
-        oninput: (e) => { d.bases[s.id] = e.target.value; hexIn.value = e.target.value; strip.replaceChildren(...stripFor(C.scale(e.target.value))); },
+    function drawFoot() {
+      const n = d.colors.filter((c) => c.hex).length;
+      foot.replaceChildren(
+        !ro && d.colors.length < MAX ? h("button", { type: "button", class: "btn btn--sm btn--ghost", text: "+ Add a color", onclick: () => { d.colors.push(newColor()); refresh(); } }) : null,
+        h("span", { class: "hint", text: n + " of 3–5 colors" + (n && !d.colors.some((c) => c.role === "neutral") ? " · tip: tag one as Neutral for backgrounds and text" : "") }));
+    }
+
+    function colorRow(c, i) {
+      const strip = h("div", { class: "pd-scale" }, stripFor(c.hex ? C.scale(c.hex) : null));
+      const hexIn = h("input", { type: "text", class: "pd-hex", value: c.hex, placeholder: "#000000", maxlength: 7, disabled: ro, "aria-label": "Color " + (i + 1) + " hex",
+        onchange: (e) => { const v = C.normHex(e.target.value); if (v || !e.target.value) { c.hex = v || ""; refresh(); } else e.target.classList.add("is-bad"); } });
+      const picker = h("input", { type: "color", class: "pd-picker", value: c.hex || "#888888", disabled: ro, "aria-label": "Pick color " + (i + 1),
+        oninput: (e) => { c.hex = e.target.value; hexIn.value = e.target.value; strip.replaceChildren(...stripFor(C.scale(e.target.value))); },
         onchange: () => refresh() });
-      const strip = h("div", { class: "pd-scale" }, stripFor(sc));
-      return h("div", { class: "pd-base" + (off ? " is-off" : "") },
-        h("div", { class: "pd-base__head" },
-          h("div", {}, h("p", { class: "pd-base__label", text: s.label }), h("p", { class: "pd-base__note", text: s.note })),
-          s.optional ? h("label", { class: "pd-toggle" }, h("input", { type: "checkbox", checked: d.useAccent, disabled: ro, onchange: (e) => { d.useAccent = e.target.checked; refresh(); } }), h("span", { text: "Use an accent" })) : null),
-        off ? null : h("div", { class: "pd-base__pick" }, picker, hexIn),
-        off ? null : strip);
+      const role = h("select", { class: "pd-select", disabled: ro, "aria-label": "What color " + (i + 1) + " is for", onchange: (e) => { c.role = e.target.value; refresh(); } },
+        [["", "Not tagged"], ["neutral", "Neutral"], ["primary", "Primary"], ["accent", "Accent"], ["status", "Status"]].map(([v, t]) => h("option", { value: v, selected: c.role === v, text: t })));
+      return h("div", { class: "pd-base" },
+        h("div", { class: "pd-base__pick" }, picker, hexIn),
+        h("div", { class: "pd-base__tag" }, role,
+          !ro && d.colors.length > MIN ? h("button", { type: "button", class: "text-btn", text: "Remove", onclick: () => { d.colors.splice(i, 1); refresh(); } }) : null),
+        strip);
     }
     function stripFor(sc) {
       if (!sc) return [h("p", { class: "pd-scale__empty", text: "Pick a color to see its scale." })];
       return sc.stops.map((st) => h("div", { class: "pd-swatch" + (st.base ? " is-base" : ""), title: st.hex + " · L " + st.L.toFixed(2) },
         h("span", { class: "pd-swatch__chip", style: "background:" + st.hex }),
         h("span", { class: "pd-swatch__stop", text: String(st.stop) }),
-        st.base ? h("span", { class: "pd-swatch__base", text: "base " + (st.offset >= 0 ? "+" : "−") + Math.abs(st.offset).toFixed(2) + " L" }) : null));
+        st.base ? h("span", { class: "pd-swatch__base", text: "yours " + (st.offset >= 0 ? "+" : "−") + Math.abs(st.offset).toFixed(2) + " L" }) : null));
     }
-    wrap.append(list);
+    wrap.append(list, foot);
     refresh();
-    const missing = () => activeSlots(d).filter((s) => !d.bases[s.id]);
     const note = h("span", { class: "pd-warn" });
     wrap.append(h("div", { class: "pd-actions" },
       h("button", { type: "button", class: "btn", text: "Color the screen →", onclick: () => {
-        const m = missing();
-        if (m.length && !ro) { note.textContent = "Pick " + m.map((s) => s.label).join(", ") + " first."; return; }
+        if (!ro && d.colors.filter((c) => c.hex).length < MIN) { note.textContent = "Pick at least 3 colors first."; return; }
         go("screen");
-      } }),
-      count, note));
+      } }), note));
     if (ro) wrap.append(h("p", { class: "hint", text: "This version is locked. Revise it from the reveal to make version " + (state.versions.length + 1) + "." }));
     return wrap;
   }
@@ -405,11 +425,12 @@
         }))));
       if (!ro) {
         kids.push(h("div", { class: "pd-actions pd-actions--stack" },
-          h("button", { type: "button", class: "btn btn--sm btn--ghost", text: "Fill the uncolored roles from Neutral", onclick: () => {
+          neutralScale(d) ? h("button", { type: "button", class: "btn btn--sm btn--ghost", text: "Fill the uncolored roles from " + neutralScale(d).label, onclick: () => {
             const mode = brief.mode === "dark" ? "d" : "l";
-            total.forEach((r) => { if (!d.assign[r] && TPL.ROLES[r]) d.assign[r] = "neutral:" + TPL.ROLES[r][mode]; });
+            const n = neutralScale(d);
+            total.forEach((r) => { if (!d.assign[r] && TPL.ROLES[r]) d.assign[r] = n.id + ":" + TPL.ROLES[r][mode]; });
             save(); draw();
-          } }),
+          } }) : null,
           h("button", { type: "button", class: "btn", disabled: done < total.length, text: "Lock version " + (state.versions.length + 1), onclick: () => lock(root, scales) }),
           done < total.length ? h("span", { class: "hint", text: "Color every role to lock." }) : h("span", { class: "hint", text: "A locked version can't be edited. You can revise it as a new version." })));
       }
@@ -607,7 +628,7 @@
     };
     refresh();
     const refs = (refsResult && refsFor === brief.id ? refsResult.products : [brief.product, ...brief.competitors].map((n, i) => ({ name: n, role: i ? "competitor" : "product", found: false })));
-    const res = await window.PDAnalysis.analyze({ brief, feel: state.feel.filter((f) => f.word.trim()), bases: v.bases, colors: v.colors, checks: v.checks, refs }, refresh);
+    const res = await window.PDAnalysis.analyze({ brief, feel: state.feel.map((w) => w.trim()).filter(Boolean), why: (state.why || "").trim(), bases: v.bases, colors: v.colors, checks: v.checks, refs }, refresh);
     v.analysis = res;
     if (res.status === "ok" && !v.next) v.next = res.analysis.next;
     save();

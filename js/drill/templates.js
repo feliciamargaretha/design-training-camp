@@ -86,7 +86,7 @@
 
   const TEMPLATES = {
     "mobile-list": {
-      name: "Mobile list", platform: "ios", w: 390, h: 844, statuses: 2,
+      statusWhere: "on the amounts in the list", name: "Mobile list", platform: "ios", w: 390, h: 844, statuses: 2,
       copy: {
         title: "Home", cards: [["GBP", "£2,140.50"], ["EUR", "€860.12"], ["USD", "$415.00"]], section: "Recent", more: "See all",
         rows: [["Sam Ortega", "Today", "+€120.00", "a"], ["Rent", "Yesterday", "−£950.00"], ["Lena Park", "Mon", "+$80.00", "a"], ["Card top-up", "Sun", "−€40.00", "b"], ["Groceries", "Sat", "−£32.10"]],
@@ -108,7 +108,7 @@
     },
 
     "mobile-detail": {
-      name: "Mobile detail", platform: "ios", w: 390, h: 844, statuses: 2,
+      statusWhere: "in the small pills under the big number", name: "Mobile detail", platform: "ios", w: 390, h: 844, statuses: 2,
       copy: {
         title: "Details", kicker: "Overview", big: "8,240", bigLabel: "Total this week", change: "+12% vs last week", changeB: "2 missed",
         chips: ["Week", "Month", "Year"], stats: [["42", "Sessions"], ["6.5h", "Time"], ["4", "Streak"]], chartTitle: "Daily", bars: [40, 65, 30, 80, 55, 90, 70],
@@ -131,7 +131,7 @@
     },
 
     "mobile-form": {
-      name: "Mobile form", platform: "ios", w: 390, h: 844, statuses: 2,
+      statusWhere: "in the messages under the fields", name: "Mobile form", platform: "ios", w: 390, h: 844, statuses: 2,
       copy: {
         title: "New", step: "Step 2 of 3", progress: 66, heading: "Fill in the details", sub: "It takes about a minute.",
         fields: [["Amount", "250.00", "a", "Looks good"], ["Recipient", "", "b", "Enter a name"], ["Reference", "Optional"]],
@@ -172,7 +172,7 @@
     },
 
     "desktop-table": {
-      name: "Desktop table", platform: "web", w: 1280, h: 800, statuses: 2,
+      statusWhere: "in the status pills", name: "Desktop table", platform: "web", w: 1280, h: 800, statuses: 2,
       copy: {
         workspace: "Workspace", nav: [["list", "Items"], ["home", "Inbox"], ["chart", "Reports"], ["grid", "Projects"], ["user", "Team"]],
         title: "All items", search: "Search", cta: "New item", tabs: ["All", "Active", "Done"], cols: ["Name", "Status", "Owner", "Updated"],
@@ -196,7 +196,7 @@
     },
 
     "desktop-dashboard": {
-      name: "Desktop dashboard", platform: "web", w: 1280, h: 800, statuses: 2,
+      statusWhere: "in the change under each number", name: "Desktop dashboard", platform: "web", w: 1280, h: 800, statuses: 2,
       copy: {
         workspace: "Workspace", nav: [["home", "Home"], ["chart", "Reports"], ["card", "Payments"], ["user", "Customers"], ["grid", "Settings"]],
         title: "Overview", range: "Last 30 days", cta: "Export",
@@ -305,8 +305,8 @@
     const def = ROLES[r];
     if (!def) return r;
     if (def.status) {
-      const name = (brief.statuses || [])[def.status === "a" ? 0 : 1] || "Status";
-      return name + (def.kind === "fill" ? " · pill" : def.kind === "line" ? " · outline" : " · text");
+      const name = (brief.statuses || [])[def.status === "a" ? 0 : 1] || "state";
+      return "Status " + (def.kind === "fill" ? "pill" : def.kind === "line" ? "outline" : "text") + " (" + name.toLowerCase() + ")";
     }
     return def.label;
   }
