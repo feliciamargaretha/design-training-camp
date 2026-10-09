@@ -64,3 +64,27 @@ vendored in `vendor/tesseract/` (Apache-2.0) so nothing loads from other sites; 
 data is named `.gz.wasm` because Claude artifacts don't serve `.gz` files (`worker.js` maps the request). If the reader
 can't start, Compare falls back to an analysis of the brief and Review lets you fill in the
 grid yourself.
+
+## Palette Drill (second tab)
+
+A separate daily exercise at `#drill`, reached from the tab bar at the top. It shares no
+state with the training camp: its own briefs (`js/drill/briefs.js`), its own IndexedDB
+database (`palette-drill`), and its own code under `js/drill/` and `css/drill.css`.
+
+One brief a day from a library of 30, each written from a real product whose name stays
+hidden until the reveal. A skipped day is just skipped. Twenty minutes, on a clock that
+keeps counting past zero:
+
+1. **Brief**: product, audience, positioning, personality, light or dark, where the color must work.
+2. **Feel words**: three words, each with the color decision it implies.
+3. **Base colors**: 3–5 hex values (neutral, primary, optional accent, status colors when the
+   screen has states). `js/drill/color.js` builds a 10-stop OKLCH scale for each on one shared
+   lightness ladder (0.97 … 0.22); hue holds, chroma tapers to both ends, colors are
+   gamut-mapped by lowering chroma. The exact hex replaces its nearest stop.
+4. **Color the screen**: one of 8 grayscale templates (`js/drill/templates.js`) with
+   role-tagged elements. Same-role elements change together unless split.
+5. **Lock and reveal**: a locked version can't be edited; revisions save beside it. The reveal
+   shows the real product and two competitors (one Mobbin screen each, palette read from
+   pixels in `js/drill/refs.js`), the measured table and eight checks (`js/drill/checks.js`),
+   and Claude's analysis (`js/drill/analysis.js`). Every number Claude writes is checked
+   against the data it was given: a line with an unknown number is asked for once more, then dropped.

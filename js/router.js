@@ -1,5 +1,5 @@
 // One page, one round at a time: #design, #study, #compare, #redesign, #review,
-// plus #history.
+// plus #history, and #drill for the Palette Drill tab.
 // No hash shows the start page.
 (function () {
   const TITLES = {
@@ -10,6 +10,7 @@
     redesign: "Redesign · Design Training Camp",
     review: "Review · Design Training Camp",
     history: "History · Design Training Camp",
+    drill: "Palette Drill · Design Training Camp",
   };
   const hooks = {};
   let current = null;
@@ -27,6 +28,12 @@
       el.hidden = el.dataset.page !== name;
     });
     document.title = TITLES[name] || TITLES.home;
+    const section = name === "drill" ? "drill" : "camp";
+    document.body.dataset.section = section;
+    document.querySelectorAll("[data-section-tab]").forEach((tab) => {
+      if (tab.dataset.sectionTab === section) tab.setAttribute("aria-current", "page");
+      else tab.removeAttribute("aria-current");
+    });
     window.scrollTo(0, 0);
     (hooks[name] || []).forEach((fn) => fn());
   }

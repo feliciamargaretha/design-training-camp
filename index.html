@@ -4,13 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Design Training Camp</title>
-  <meta name="description" content="A little practice, every week. Design, study, compare, redesign, review.">
+  <meta name="description" content="A little practice. The weekly training camp and the daily palette drill.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/drill.css">
 </head>
 <body>
+  <nav class="sections" aria-label="Exercises">
+    <a class="sections__tab" href="#" data-section-tab="camp">Training camp</a>
+    <a class="sections__tab" href="#drill" data-section-tab="drill">Palette drill</a>
+  </nav>
+
   <main class="frame" data-page="home">
     <header class="topbar">
       <p class="eyebrow">A little practice. Every week.</p>
@@ -488,6 +494,23 @@
     </div>
   </main>
 
+
+  <main class="frame drill" data-page="drill" hidden>
+    <header class="topbar">
+      <p class="eyebrow" id="pd-eyebrow">Palette drill</p>
+      <div class="topbar__right">
+        <p class="pill">One brief a day · 20 minutes</p>
+        <p class="pill pd-timer" id="pd-timer" aria-live="off" title="Counts down from 20 minutes and keeps going past zero">20:00</p>
+      </div>
+    </header>
+    <div class="pd-viewing" id="pd-viewing" role="status" hidden>
+      <p id="pd-viewing-text"></p>
+      <button type="button" class="text-btn" id="pd-back-today">Back to today's drill</button>
+    </div>
+    <ol class="pd-steps" id="pd-steps" aria-label="Steps"></ol>
+    <div id="pd-body"></div>
+  </main>
+
   <dialog class="lightbox" id="lightbox">
     <button type="button" class="lightbox__close" id="lightbox-close" aria-label="Close">×</button>
     <img id="lightbox-img" alt="">
@@ -531,5 +554,13 @@
   <script src="js/redesign.js"></script>
   <script src="js/review.js"></script>
   <script src="js/history.js"></script>
+  <script src="js/drill/color.js"></script>
+  <script src="js/drill/templates.js"></script>
+  <script src="js/drill/briefs.js"></script>
+  <script src="js/drill/store.js"></script>
+  <script src="js/drill/checks.js"></script>
+  <script src="js/drill/refs.js"></script>
+  <script src="js/drill/analysis.js"></script>
+  <script src="js/drill/app.js"></script>
 </body>
 </html>
