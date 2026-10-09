@@ -269,6 +269,14 @@
         h("span", { class: "hint", text: n + " of 3–5 colors" + (n && !d.colors.some((c) => c.role === "neutral") ? " · tip: tag one as Neutral for backgrounds and text" : "") }));
     }
 
+    // Removing is always allowed; the 3-color minimum only applies when moving on.
+    // Stops already used on the screen from this color go back to uncolored.
+    function removeColor(c) {
+      d.colors = d.colors.filter((x) => x !== c);
+      Object.keys(d.assign).forEach((r) => { if (d.assign[r].startsWith(c.id + ":")) delete d.assign[r]; });
+      Object.keys(d.split).forEach((e) => { if (d.split[e].startsWith(c.id + ":")) delete d.split[e]; });
+    }
+
     function colorRow(c, i) {
       const strip = h("div", { class: "pd-scale" }, stripFor(c.hex ? C.scale(c.hex) : null));
       const hexIn = h("input", { type: "text", class: "pd-hex", value: c.hex, placeholder: "#000000", maxlength: 7, disabled: ro, "aria-label": "Color " + (i + 1) + " hex",
@@ -281,7 +289,7 @@
       return h("div", { class: "pd-base" },
         h("div", { class: "pd-base__pick" }, picker, hexIn),
         h("div", { class: "pd-base__tag" }, role,
-          !ro && d.colors.length > MIN ? h("button", { type: "button", class: "text-btn", text: "Remove", onclick: () => { d.colors.splice(i, 1); refresh(); } }) : null),
+          !ro ? h("button", { type: "button", class: "text-btn", text: "Remove", "aria-label": "Remove color " + (i + 1), onclick: () => { removeColor(c); refresh(); } }) : null),
         strip);
     }
     function stripFor(sc) {
