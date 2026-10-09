@@ -534,11 +534,11 @@
     };
     if (refsResult && refsFor === brief.id) {
       fill(refsResult);
-      if (v.analysis == null) runAnalysis(vi);
+      analyzeFor(v, vi, refsResult);
     } else {
       cards.replaceChildren(...[brief.product, ...brief.competitors].map((n) => h("div", { class: "pd-ref is-loading" }, h("p", { class: "pd-ref__name", text: n }), h("p", { class: "hint", text: "Loading from Mobbin…" }))));
       const id = brief.id;
-      getRefs().then((res) => { if (brief.id !== id || !cards.isConnected) return; fill(res); if (v.analysis == null) runAnalysis(vi); });
+      getRefs().then((res) => { if (brief.id !== id || !cards.isConnected) return; fill(res); analyzeFor(v, vi, res); });
     }
     wrap.append(real);
 
@@ -630,7 +630,7 @@
     an.replaceChildren(title,
       h("div", { class: "pd-an" },
         h("div", { class: "pd-an__part" }, h("p", { class: "pd-an__h", text: "What the real products did" }),
-          h("ul", {}, x.real.products.map((p) => h("li", {}, h("strong", { text: p.name + ": " }), p.line))),
+          h("ul", {}, realLines(x).map((p) => h("li", {}, h("strong", { text: p.name + ": " }), p.line, p.measured ? h("span", { class: "pd-an__tag", text: " · measured by the page" }) : null))),
           x.real.shared ? h("p", {}, h("strong", { text: "Shared: " }), x.real.shared) : null,
           x.real.split ? h("p", {}, h("strong", { text: "Split: " }), x.real.split) : null),
         h("div", { class: "pd-an__part" }, h("p", { class: "pd-an__h", text: "What you got right" }), h("ul", {}, x.right.map((r) => h("li", { text: r })))),
@@ -641,7 +641,36 @@
           h("ul", {}, x.feel.map((f) => h("li", {}, h("span", { class: "pd-verdict pd-verdict--" + (f.verdict === "held" ? "ok" : "no"), text: f.verdict === "held" ? "Held" : "Broke" }), " ", h("strong", { text: f.word + ": " }), f.line)))),
         x.next ? h("div", { class: "pd-an__part" }, h("p", { class: "pd-an__h", text: "Practice next" }), h("p", { text: x.next })) : null),
       ...(a.dropped ? [h("p", { class: "pd-note", text: a.dropped + (a.dropped === 1 ? " line was" : " lines were") + " left out because a number in it didn't match the table." })] : []),
-      h("p", { class: "pd-note", text: "Written by Claude from the measured values only. It didn't see your screen." }));
+      h("div", { class: "pd-refs-why" },
+        h("p", { class: "pd-note", text: "Written by Claude from the measured values only. It didn't see your screen." }),
+        h("button", { type: "button", class: "text-btn", text: "Write it again", onclick: () => runAnalysis(vi, true) })));
+  }
+
+  // Claude's line per product, with the page's measurement filling any gap.
+  function realLines(x) {
+    const refs = refsResult && refsFor === brief.id ? refsResult.products : [];
+    const said = (n) => x.real.products.find((p) => p.name.toLowerCase().includes(n.toLowerCase()) || n.toLowerCase().includes(p.name.toLowerCase()));
+    const lines = refs.map((r) => said(r.name) || (r.found ? { name: r.name, line: measuredLine(r), measured: true } : { name: r.name, line: "No screen to measure." }));
+    x.real.products.forEach((p) => { if (!lines.includes(p)) lines.push(p); });
+    return lines.length ? lines : x.real.products;
+  }
+
+  // Which reference palettes an analysis was written with.
+  const refKey = (products) => (products || []).map((p) => p.name + ":" + (p.found ? p.source || "live" : "none")).join("|");
+
+  // Run the analysis once the references are in; write it again if it was
+  // written before the real products' palettes were available.
+  function analyzeFor(v, vi, res) {
+    if (v.analysis == null) return runAnalysis(vi);
+    const a = v.analysis;
+    if (a.status === "ok" && res && res.products.some((p) => p.found) && a.refKey !== refKey(res.products)) runAnalysis(vi, true);
+  }
+
+  // Part 1 straight from the measurements, for any product Claude's answer
+  // didn't cover.
+  function measuredLine(p) {
+    const s = p.summary;
+    return "lightness runs from L " + s.lightMin + " to " + s.lightMax + (s.owner ? "; the most saturated color, " + s.owner.hex + ", covers " + s.owner.share + " of the screen." : ".");
   }
 
   async function runAnalysis(vi, retry) {
@@ -656,7 +685,7 @@
     refresh();
     const refs = (refsResult && refsFor === brief.id ? refsResult.products : [brief.product, ...brief.competitors].map((n, i) => ({ name: n, role: i ? "competitor" : "product", found: false })));
     const res = await window.PDAnalysis.analyze({ brief, feel: state.feel.map((w) => w.trim()).filter(Boolean), why: (state.why || "").trim(), bases: v.bases, colors: v.colors, checks: v.checks, refs }, refresh);
-    v.analysis = res;
+    v.analysis = { ...res, refKey: refKey(refs) };
     if (res.status === "ok" && !v.next) v.next = res.analysis.next;
     save();
     if (k === key && state.step === "reveal") render();

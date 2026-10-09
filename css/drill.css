@@ -230,3 +230,4 @@ body[data-section="drill"] .day-banner { display: none; }
 @media (max-width: 640px) { .pd-base__pick { flex-wrap: wrap; } }
 .pd-refs-why { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .pd-refs-why .pd-note { margin-top: 12px; }
+.pd-an__tag { color: var(--ink-mute); font-size: 12px; }
