@@ -106,7 +106,9 @@ body[data-section="drill"] .day-banner { display: none; }
 .pd-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); cursor: pointer; margin-top: 8px; }
 .pd-scale { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
 .pd-scale__empty { grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--ink-mute); }
-.pd-swatch { display: grid; gap: 3px; justify-items: center; position: relative; }
+.pd-swatch { display: grid; gap: 3px; justify-items: stretch; text-align: center; position: relative; min-width: 0; }
+.pd-scale { padding-bottom: 16px; }
+.pd-swatch__base { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); }
 .pd-swatch__chip { width: 100%; height: 40px; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
 .pd-swatch.is-base .pd-swatch__chip { box-shadow: 0 0 0 2px var(--frame), 0 0 0 4px var(--ink); }
 .pd-swatch__stop { font-size: 11px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
@@ -219,3 +221,10 @@ body[data-section="drill"] .day-banner { display: none; }
   .pd-check__result { justify-self: start; }
   .pd-head { gap: 14px; }
 }
+
+/* HSL readout next to each picked color */
+.pd-hsl { display: flex; gap: 10px; font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; margin-left: 4px; }
+.pd-hsl__v b { font-weight: 600; color: var(--ink-mute); font-size: 11px; }
+.pd-ref__stored { margin: 0; font-size: 12px; color: var(--ink-soft); background: var(--card); border-radius: 10px; padding: 10px 12px; }
+.pd-ref__stored a { color: var(--ink); }
+@media (max-width: 640px) { .pd-base__pick { flex-wrap: wrap; } }

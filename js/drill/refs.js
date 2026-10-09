@@ -17,28 +17,42 @@
     try { return window.claude && window.claude.use ? await window.claude.use("mcp") : null; } catch (_) { return null; }
   }
 
-  async function search(mcp, query, platform) {
-    const input = { query, platform, limit: 8, mode: "standard", image_format: "jpg", output_destination: "code",
-      task_intent: "Compare a learner's palette with real products in a color practice drill." };
+  async function call(mcp, tool, input) {
     const opts = { cache: { staleTime: 86400000, gcTime: 7 * 86400000 } };
     try {
-      return await mcp.callTool(SERVER, "search_screens", input, opts);
+      return await mcp.callTool(SERVER, tool, input, opts);
     } catch (err) {
       if (!err || !err.retryable) throw err;
       await wait((err.retryAfterMs || 1500) + Math.random() * 1000);
-      return mcp.callTool(SERVER, "search_screens", input, opts);
+      return mcp.callTool(SERVER, tool, input, opts);
     }
   }
+  const base = { image_format: "jpg", output_destination: "code", task_intent: "Compare a learner's palette with real products in a color practice drill." };
 
-  // First screen that belongs to the named app, as a data URL.
+  // First screen that belongs to the named app, as a data URL. Looks in
+  // several places: the brief's kind of screen, the app's home screen, the
+  // other platform, then the product's marketing site.
   async function screenFor(mcp, name, template, platform) {
-    for (const q of [name + " " + HINT[template], name + " home screen"]) {
-      const res = await search(mcp, q, platform);
+    const other = platform === "ios" ? "web" : "ios";
+    // Mobbin's quick search can come back empty for "<app> home screen" while
+    // the plain app name or a deep search finds it, so try several.
+    const site = template === "landing-hero" || template === "pricing";
+    const tries = [
+      site ? ["search_sections", { query: name + (template === "pricing" ? " pricing plans" : " homepage hero"), limit: 10 }] : null,
+      ["search_screens", { query: name + " " + HINT[template], platform, mode: "deep", limit: 10 }],
+      ["search_screens", { query: name, platform, mode: "standard", limit: 10 }],
+      ["search_screens", { query: name, platform: other, mode: "standard", limit: 10 }],
+      site ? null : ["search_sections", { query: name + " homepage hero", limit: 10 }],
+    ].filter(Boolean);
+    for (const [tool, input] of tries) {
+      let res;
+      try { res = await call(mcp, tool, { ...base, ...input }); }
+      catch (err) { if (err && err.code === "tool_error") continue; throw err; }
       const payload = res.payload || {};
       const images = (res.content || []).filter((b) => b.type === "image");
-      const list = payload.screens || [];
-      const i = list.findIndex((s, n) => images[n] && matches(s.app_name, name));
-      if (i >= 0) return { appName: list[i].app_name, url: list[i].mobbin_url, image: "data:" + images[i].mimeType + ";base64," + images[i].data };
+      const list = payload.screens || payload.sections || [];
+      const i = list.findIndex((s, n) => images[n] && matches(s.app_name || s.site_name, name));
+      if (i >= 0) return { appName: list[i].app_name || list[i].site_name, url: list[i].mobbin_url, platform: tool === "search_sections" ? "web" : input.platform, image: "data:" + images[i].mimeType + ";base64," + images[i].data };
     }
     return null;
   }
@@ -97,7 +111,8 @@
     const f = window.PDChecks.fmt;
     const big = palette.filter((c) => c.share >= 2);
     const Ls = (big.length ? big : palette).map((c) => c.L);
-    const owner = palette.filter((c) => c.share >= 0.5).sort((a, b) => b.C - a.C)[0];
+    // Ignore specks like a logo in a list row: the owner must cover at least 1%.
+    const owner = (palette.some((c) => c.share >= 1) ? palette.filter((c) => c.share >= 1) : palette).slice().sort((a, b) => b.C - a.C)[0];
     return {
       lightMin: f.L(Math.min(...Ls)), lightMax: f.L(Math.max(...Ls)),
       owner: owner ? { hex: owner.hex, L: f.L(owner.L), C: f.C(owner.C), H: owner.C < 0.002 ? "—" : f.H(owner.H), share: f.share(owner.share) } : null,
@@ -114,14 +129,23 @@
     return canvas.toDataURL("image/jpeg", 0.8);
   }
 
+  // When no live screen comes back: the palette measured from a Mobbin screen
+  // when the brief library was written (js/drill/ref-palettes.js).
+  function stored(n) {
+    const r = (window.PDRefPalettes || {})[n.name] || (window.PDRefPalettes || {})[n.label];
+    if (!r) return { name: n.label, role: n.role, found: false };
+    const palette = r.palette.map(([hex, share]) => { const o = C.hexToOklch(hex); return { hex, share, L: o.L, C: o.C, H: o.H }; });
+    return { name: n.label, role: n.role, found: true, source: "stored", url: r.url, palette, summary: summarize(palette) };
+  }
+
   // { status, products: [{ name, role: "product"|"competitor", found, url, thumb, palette, summary }] }
   async function load(brief, onProgress) {
     const cacheKey = "refs:" + brief.id;
     const saved = await window.PDStore.get(cacheKey);
-    if (saved && saved.products && saved.products.some((p) => p.found)) return { status: "ok", products: saved.products };
+    if (saved && saved.products && saved.products.some((p) => p.source === "live")) return { status: "ok", products: saved.products };
 
     const names = [{ name: brief.mobbin, label: brief.product, role: "product" }, ...brief.competitors.map((n) => ({ name: n, label: n, role: "competitor" }))];
-    const empty = names.map((n) => ({ name: n.label, role: n.role, found: false }));
+    const empty = names.map(stored);
     const mcp = await getMcp();
     if (!mcp) return { status: "unavailable", products: empty };
     const platform = window.PDTemplates.TEMPLATES[brief.template].platform;
@@ -131,19 +155,19 @@
       if (onProgress) onProgress(n.label);
       try {
         const s = await screenFor(mcp, n.name, brief.template, platform);
-        if (!s) { products.push({ name: n.label, role: n.role, found: false }); continue; }
-        const palette = await readPalette(s.image, platform);
-        products.push({ name: n.label, role: n.role, found: true, url: s.url, thumb: await thumb(s.image), palette, summary: summarize(palette) });
+        if (!s) { products.push(stored(n)); continue; }
+        const palette = await readPalette(s.image, s.platform);
+        products.push({ name: n.label, role: n.role, found: true, source: "live", url: s.url, thumb: await thumb(s.image), palette, summary: summarize(palette) });
       } catch (err) {
         error = (err && err.code) || "upstream_error";
-        products.push({ name: n.label, role: n.role, found: false });
+        products.push(stored(n));
         if (["not_granted", "server_not_connected", "needs_reauth", "not_in_manifest", "blocked_by_policy"].includes(error)) {
-          return { status: error, products: [...products, ...names.slice(products.length).map((x) => ({ name: x.label, role: x.role, found: false }))] };
+          return { status: error, products: [...products, ...names.slice(products.length).map(stored)] };
         }
       }
     }
-    if (products.some((p) => p.found)) await window.PDStore.set(cacheKey, { products });
-    return { status: products.some((p) => p.found) ? "ok" : error || "empty", products };
+    if (products.some((p) => p.source === "live")) await window.PDStore.set(cacheKey, { products });
+    return { status: products.some((p) => p.source === "live") ? "ok" : error || "empty", products };
   }
 
   window.PDRefs = { load, readPalette, summarize };

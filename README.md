@@ -86,6 +86,8 @@ keeps counting past zero:
    role-tagged elements. Same-role elements change together unless split.
 5. **Lock and reveal**: a locked version can't be edited; revisions save beside it. The reveal
    shows the real product and two competitors (one Mobbin screen each, palette read from
-   pixels in `js/drill/refs.js`), the measured table and eight checks (`js/drill/checks.js`),
+   pixels in `js/drill/refs.js`; the search tries deep search, the plain app name, the other
+   platform and the marketing site, and falls back to palettes measured from Mobbin screens
+   when the library was written, in `js/drill/ref-palettes.js`), the measured table and eight checks (`js/drill/checks.js`),
    and Claude's analysis (`js/drill/analysis.js`). Every number Claude writes is checked
    against the data it was given: a line with an unknown number is asked for once more, then dropped.

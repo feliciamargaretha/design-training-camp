@@ -122,5 +122,19 @@
     return d > 180 ? 360 - d : d;
   }
 
-  window.PDColor = { STOPS, LADDER, parseHex, normHex, hexToOklch, oklchToHex, scale, contrast, gray, hueDiff };
+  // HSL, rounded, for comparing picks the way design tools show them.
+  function hexToHsl(hex) {
+    const rgb = parseHex(hex);
+    if (!rgb) return null;
+    const [r, g, b] = rgb;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    const l = (max + min) / 2;
+    const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+    let h = 0;
+    if (d) h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h = Math.round(h * 60); if (h < 0) h += 360;
+    return { h: h % 360, s: Math.round(s * 100), l: Math.round(l * 100) };
+  }
+
+  window.PDColor = { STOPS, LADDER, parseHex, normHex, hexToOklch, oklchToHex, scale, contrast, gray, hueDiff, hexToHsl };
 })();

@@ -264,9 +264,10 @@
 
     function drawFoot() {
       const n = d.colors.filter((c) => c.hex).length;
-      foot.replaceChildren(
+      foot.replaceChildren(...[
         !ro && d.colors.length < MAX ? h("button", { type: "button", class: "btn btn--sm btn--ghost", text: "+ Add a color", onclick: () => { d.colors.push(newColor()); refresh(); } }) : null,
-        h("span", { class: "hint", text: n + " of 3–5 colors" + (n && !d.colors.some((c) => c.role === "neutral") ? " · tip: tag one as Neutral for backgrounds and text" : "") }));
+        h("span", { class: "hint", text: n + " of 3–5 colors" + (n && !d.colors.some((c) => c.role === "neutral") ? " · tip: tag one as Neutral for backgrounds and text" : "") }),
+      ].filter(Boolean));
     }
 
     // Removing is always allowed; the 3-color minimum only applies when moving on.
@@ -282,19 +283,25 @@
       const hexIn = h("input", { type: "text", class: "pd-hex", value: c.hex, placeholder: "#000000", maxlength: 7, disabled: ro, "aria-label": "Color " + (i + 1) + " hex",
         onchange: (e) => { const v = C.normHex(e.target.value); if (v || !e.target.value) { c.hex = v || ""; refresh(); } else e.target.classList.add("is-bad"); } });
       const picker = h("input", { type: "color", class: "pd-picker", value: c.hex || "#888888", disabled: ro, "aria-label": "Pick color " + (i + 1),
-        oninput: (e) => { c.hex = e.target.value; hexIn.value = e.target.value; strip.replaceChildren(...stripFor(C.scale(e.target.value))); },
+        oninput: (e) => { c.hex = e.target.value; hexIn.value = e.target.value; hslOut.replaceChildren(...hslText(c.hex)); strip.replaceChildren(...stripFor(C.scale(e.target.value))); },
         onchange: () => refresh() });
+      const hslOut = h("span", { class: "pd-hsl", title: "Hue, saturation, lightness (HSL)" }, hslText(c.hex));
       const role = h("select", { class: "pd-select", disabled: ro, "aria-label": "What color " + (i + 1) + " is for", onchange: (e) => { c.role = e.target.value; refresh(); } },
         [["", "Not tagged"], ["neutral", "Neutral"], ["primary", "Primary"], ["accent", "Accent"], ["status", "Status"]].map(([v, t]) => h("option", { value: v, selected: c.role === v, text: t })));
       return h("div", { class: "pd-base" },
-        h("div", { class: "pd-base__pick" }, picker, hexIn),
+        h("div", { class: "pd-base__pick" }, picker, hexIn, hslOut),
         h("div", { class: "pd-base__tag" }, role,
           !ro ? h("button", { type: "button", class: "text-btn", text: "Remove", "aria-label": "Remove color " + (i + 1), onclick: () => { removeColor(c); refresh(); } }) : null),
         strip);
     }
+    function hslText(hex) {
+      const v = hex && C.hexToHsl(hex);
+      if (!v) return [h("span", { class: "pd-hsl__v", text: "H — S — L —" })];
+      return [["H", v.h + "°"], ["S", v.s + "%"], ["L", v.l + "%"]].map(([k, x]) => h("span", { class: "pd-hsl__v" }, h("b", { text: k }), " " + x));
+    }
     function stripFor(sc) {
       if (!sc) return [h("p", { class: "pd-scale__empty", text: "Pick a color to see its scale." })];
-      return sc.stops.map((st) => h("div", { class: "pd-swatch" + (st.base ? " is-base" : ""), title: st.hex + " · L " + st.L.toFixed(2) },
+      return sc.stops.map((st) => h("div", { class: "pd-swatch" + (st.base ? " is-base" : ""), title: st.hex + " · " + (() => { const v = C.hexToHsl(st.hex); return "HSL " + v.h + "° " + v.s + "% " + v.l + "%"; })() },
         h("span", { class: "pd-swatch__chip", style: "background:" + st.hex }),
         h("span", { class: "pd-swatch__stop", text: String(st.stop) }),
         st.base ? h("span", { class: "pd-swatch__base", text: "yours " + (st.offset >= 0 ? "+" : "−") + Math.abs(st.offset).toFixed(2) + " L" }) : null));
@@ -512,7 +519,9 @@
     real.append(cards);
     const fill = (res) => {
       cards.replaceChildren(...res.products.map(refCard));
-      if (res.status !== "ok") real.append(h("p", { class: "pd-note", text: refsMessage(res.status) }));
+      if (res.status !== "ok") real.append(h("p", { class: "pd-note", text: res.products.some((p) => p.found)
+        ? "Live screens didn't load here, so these palettes come from Mobbin screens measured when the brief was written."
+        : refsMessage(res.status) }));
     };
     if (refsResult && refsFor === brief.id) {
       fill(refsResult);
@@ -585,10 +594,11 @@
   function refCard(p) {
     if (!p.found) return h("div", { class: "pd-ref is-missing" },
       h("p", { class: "pd-ref__name" }, p.name, p.role === "product" ? h("span", { class: "pd-ref__tag", text: "The brief" }) : null),
-      h("p", { class: "hint", text: "No Mobbin screen to measure." }));
+      h("p", { class: "hint", text: "No screen found to measure." }));
     const s = p.summary;
     return h("div", { class: "pd-ref" },
-      h("a", { class: "pd-ref__img", href: p.url, target: "_blank", rel: "noopener" }, h("img", { src: p.thumb, alt: p.name + " screen" })),
+      p.thumb ? h("a", { class: "pd-ref__img", href: p.url, target: "_blank", rel: "noopener" }, h("img", { src: p.thumb, alt: p.name + " screen" }))
+        : h("p", { class: "pd-ref__stored" }, "Palette measured from a Mobbin screen when this brief was written. ", p.url ? h("a", { href: p.url, target: "_blank", rel: "noopener", text: "See the screen on Mobbin" }) : null),
       h("p", { class: "pd-ref__name" }, p.name, p.role === "product" ? h("span", { class: "pd-ref__tag", text: "The brief" }) : null),
       h("div", { class: "pd-sharebar", title: "Color share" }, p.palette.map((c) => h("span", { style: "background:" + c.hex + ";flex:" + c.share, title: c.hex + " · " + c.share.toFixed(1) + "%" }))),
       h("p", { class: "pd-ref__meta", text: "Lightness " + s.lightMin + "–" + s.lightMax + (s.owner ? " · most saturated " + s.owner.hex + " at " + s.owner.share : "") }));
@@ -604,7 +614,7 @@
     if (a.status !== "ok") {
       an.replaceChildren(title,
         h("p", { class: "pd-note", text: a.status === "unavailable" ? "Claude's analysis works when this page is open inside Claude. Everything above is measured by the page." : "The analysis couldn't be written (" + a.status + ")." }),
-        a.status !== "unavailable" ? h("button", { type: "button", class: "btn btn--sm btn--ghost", text: "Try again", onclick: () => runAnalysis(vi, true) }) : null);
+        ...(a.status !== "unavailable" ? [h("button", { type: "button", class: "btn btn--sm btn--ghost", text: "Try again", onclick: () => runAnalysis(vi, true) })] : []));
       return;
     }
     const x = a.analysis;
@@ -621,7 +631,7 @@
         h("div", { class: "pd-an__part" }, h("p", { class: "pd-an__h", text: "Feel translation" }),
           h("ul", {}, x.feel.map((f) => h("li", {}, h("span", { class: "pd-verdict pd-verdict--" + (f.verdict === "held" ? "ok" : "no"), text: f.verdict === "held" ? "Held" : "Broke" }), " ", h("strong", { text: f.word + ": " }), f.line)))),
         x.next ? h("div", { class: "pd-an__part" }, h("p", { class: "pd-an__h", text: "Practice next" }), h("p", { text: x.next })) : null),
-      a.dropped ? h("p", { class: "pd-note", text: a.dropped + (a.dropped === 1 ? " line was" : " lines were") + " left out because a number in it didn't match the table." }) : null,
+      ...(a.dropped ? [h("p", { class: "pd-note", text: a.dropped + (a.dropped === 1 ? " line was" : " lines were") + " left out because a number in it didn't match the table." })] : []),
       h("p", { class: "pd-note", text: "Written by Claude from the measured values only. It didn't see your screen." }));
   }
 
