@@ -148,7 +148,7 @@
 
   function render() {
     const today = window.PDBriefs.key(new Date());
-    $("pd-eyebrow").textContent = "Palette drill · Drill " + brief.number;
+    $("pd-eyebrow").textContent = "Drill " + brief.number + " · One brief a day";
     $("pd-viewing").hidden = key === today;
     $("pd-viewing-text").textContent = "You're looking at Drill " + brief.number + ".";
     renderSteps();
@@ -188,35 +188,46 @@
         state.started
           ? h("button", { type: "button", class: "btn", onclick: () => go(state.versions.length ? "reveal" : "feel"), text: state.versions.length ? "Open the reveal →" : "Continue →" })
           : h("button", { type: "button", class: "btn", onclick: () => { state.started = Date.now(); go("feel"); }, text: "Start →" }),
-        h("span", { class: "hint", text: state.started ? "Pick up where you left off." : "Read it, then start." })),
-      pastList());
+        h("span", { class: "hint", text: state.started ? "Pick up where you left off." : "Read it, then start." })));
   }
 
-  function pastList() {
-    const wrap = h("section", { class: "pd-past" }, h("h3", { class: "pd-sub", text: "Past drills" }));
-    const list = h("ul", { class: "pd-past__list" });
-    wrap.append(list);
-    window.PDStore.keys().then(async (keys) => {
-      const days = keys.filter((k) => k.startsWith("day:")).map((k) => k.slice(4)).filter((k) => k !== key).sort().reverse();
-      if (!days.length) { list.append(h("li", { class: "hint", text: "Your finished and started drills will show here." })); return; }
-      for (const d of days) {
-        const s = await window.PDStore.get("day:" + d);
-        const b = window.PDBriefs.forDate(window.PDBriefs.parse(d));
-        if (!s || s.briefId !== b.id) continue;
-        const done = s.versions && s.versions.length;
-        list.append(h("li", { class: "pd-past__item" },
-          h("span", { class: "pd-past__n", text: "Drill " + b.number }),
-          h("span", { class: "pd-past__name", text: done ? b.product + " · " + s.versions.length + (s.versions.length > 1 ? " versions" : " version") : "Not finished" }),
-          h("button", { type: "button", class: "btn btn--sm btn--ghost", text: "Open", onclick: () => openDay(d) })));
-      }
-    });
-    return wrap;
+  // ---------- History ----------
+  // Every drill started, newest first: the brief, how far it got, the palette.
+  async function renderHistory() {
+    const list = $("pdh-list");
+    const today = window.PDBriefs.key(new Date());
+    // Today's drill is always listed, started or not.
+    const keys = [...new Set([today, ...(await window.PDStore.keys()).filter((k) => k.startsWith("day:")).map((k) => k.slice(4))])].sort().reverse();
+    const items = [];
+    for (const d of keys) {
+      const b = window.PDBriefs.forDate(window.PDBriefs.parse(d));
+      const s = migrate((await window.PDStore.get("day:" + d)) || (d === today ? { briefId: b.id } : {}));
+      if (!s.briefId || s.briefId !== b.id) continue;
+      const versions = s.versions || [];
+      const last = versions[versions.length - 1];
+      const stepNames = { brief: "Brief", feel: "Feel words", colors: "Palette", screen: "Color the screen", reveal: "Reveal" };
+      const status = versions.length ? versions.length + (versions.length > 1 ? " versions locked" : " version locked") : s.started ? "In progress · " + (stepNames[s.step] || "Brief") : "Not started";
+      const pal = last ? last.bases : ((s.draft && s.draft.colors) || []).filter((c) => c.hex).map((c) => ({ hex: c.hex, label: c.role ? c.role : "" }));
+      items.push(h("li", { class: "pdh-item" },
+        h("div", { class: "pdh-item__head" },
+          h("p", { class: "pdh-item__n" }, "Drill " + b.number, d === today ? h("span", { class: "hist__state hist__state--now", text: "Today" }) : null),
+          h("p", { class: "pdh-item__brief", text: versions.length ? b.product + " · " + b.what : b.what }),
+          h("p", { class: "pdh-item__status", text: status })),
+        h("div", { class: "pdh-item__pal" }, pal.length ? pal.map((c) => h("span", { class: "pdh-sw", style: "background:" + c.hex, title: (c.label ? c.label + " · " : "") + c.hex })) : h("span", { class: "hint", text: "No colors yet" })),
+        h("button", { type: "button", class: "btn btn--sm" + (versions.length ? "" : " btn--ghost"), text: versions.length ? "Open reveal" : s.started ? "Continue" : "Open", onclick: () => openDay(d) })));
+    }
+    list.replaceChildren(...items);
+    $("pdh-empty").hidden = items.length > 0;
+    $("pdh-count").textContent = items.length + (items.length === 1 ? " drill" : " drills");
   }
+  window.DTCPages.on("drillhistory", renderHistory);
 
   async function openDay(d) {
     await loadDay(d);
+    ready = Promise.resolve();
     if (state.versions.length) state.step = "reveal";
-    render();
+    if (location.hash !== "#drill") location.hash = "#drill";
+    else render();
     window.scrollTo(0, 0);
   }
 

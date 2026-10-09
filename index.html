@@ -497,9 +497,10 @@
 
   <main class="frame drill" data-page="drill" hidden>
     <header class="topbar">
-      <p class="eyebrow" id="pd-eyebrow">Palette drill</p>
+      <a class="eyebrow eyebrow--link" href="#">← Design training camp</a>
       <div class="topbar__right">
-        <p class="pill">One brief a day</p>
+        <a class="text-link" href="#drillhistory">History</a>
+        <p class="pill" id="pd-eyebrow">Palette drill</p>
       </div>
     </header>
     <div class="pd-viewing" id="pd-viewing" role="status" hidden>
@@ -508,6 +509,22 @@
     </div>
     <ol class="pd-steps" id="pd-steps" aria-label="Steps"></ol>
     <div id="pd-body"></div>
+  </main>
+
+  <main class="frame drill" data-page="drillhistory" hidden>
+    <header class="topbar">
+      <a class="eyebrow eyebrow--link" href="#drill">← Palette drill</a>
+      <div class="topbar__right">
+        <a class="text-link" href="#">Design training camp</a>
+        <p class="pill" id="pdh-count">Palette drill history</p>
+      </div>
+    </header>
+    <div class="round-title">
+      <p class="round-title__name">Drill history</p>
+    </div>
+    <p class="pd-head__lede">Every palette drill you've started, newest first. Open one to see its reveal, or carry on where you left off.</p>
+    <ul class="pdh-list" id="pdh-list"></ul>
+    <p class="hint" id="pdh-empty" hidden>No drills yet. Start today's on the Palette drill tab.</p>
   </main>
 
   <dialog class="lightbox" id="lightbox">

@@ -67,7 +67,8 @@ grid yourself.
 
 ## Palette Drill (second tab)
 
-A separate daily exercise at `#drill`, reached from the tab bar at the top. It shares no
+A separate daily exercise at `#drill`, reached from the tab bar at the top, with its own
+history at `#drillhistory`. It shares no
 state with the training camp: its own briefs (`js/drill/briefs.js`), its own IndexedDB
 database (`palette-drill`), and its own code under `js/drill/` and `css/drill.css`.
 

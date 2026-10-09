@@ -11,6 +11,7 @@
     review: "Review · Design Training Camp",
     history: "History · Design Training Camp",
     drill: "Palette Drill · Design Training Camp",
+    drillhistory: "Palette Drill History · Design Training Camp",
   };
   const hooks = {};
   let current = null;
@@ -28,7 +29,7 @@
       el.hidden = el.dataset.page !== name;
     });
     document.title = TITLES[name] || TITLES.home;
-    const section = name === "drill" ? "drill" : "camp";
+    const section = name.startsWith("drill") ? "drill" : "camp";
     document.body.dataset.section = section;
     document.querySelectorAll("[data-section-tab]").forEach((tab) => {
       if (tab.dataset.sectionTab === section) tab.setAttribute("aria-current", "page");
