@@ -72,8 +72,7 @@ state with the training camp: its own briefs (`js/drill/briefs.js`), its own Ind
 database (`palette-drill`), and its own code under `js/drill/` and `css/drill.css`.
 
 One brief a day from a library of 30, each written from a real product whose name stays
-hidden until the reveal. A skipped day is just skipped. Twenty minutes, on a clock that
-keeps counting past zero:
+hidden until the reveal. A skipped day is just skipped. No timer:
 
 1. **Brief**: product, audience, positioning, personality, light or dark, where the color must work.
 2. **Feel words**: any three words, plus a free-text box explaining how they shape the colors.

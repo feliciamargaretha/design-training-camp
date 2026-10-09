@@ -1,11 +1,10 @@
-// Palette Drill: one brief a day, twenty minutes. Read the brief, pick three
+// Palette Drill: one brief a day. Read the brief, pick three
 // feel words and explain them, build a palette of 3–5 colors (tag their roles
 // whenever you like), color the grayscale screen from their scales, lock it,
 // then see the real product, your measured screen and Claude's analysis.
 (function () {
   const C = window.PDColor;
   const TPL = window.PDTemplates;
-  const MINUTES = 20;
   const STEPS = [
     ["brief", "Brief", ""],
     ["feel", "Feel words", "3 min"],
@@ -36,7 +35,6 @@
   let ready = null;
   let selected = null; // { role, el }
   let shownVersion = null;
-  let tick = null;
 
   // ---------- State ----------
   function blank() {
@@ -127,18 +125,6 @@
     return d.split[el.dataset.el] || d.assign[el.dataset.r] || null;
   }
 
-  // ---------- Timer ----------
-  function updateTimer() {
-    const el = $("pd-timer");
-    if (!el) return;
-    if (!state || !state.started) { el.textContent = MINUTES + ":00"; el.classList.remove("is-over"); return; }
-    const left = MINUTES * 60000 - (Date.now() - state.started);
-    const s = Math.floor(Math.abs(left) / 1000);
-    const t = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
-    el.textContent = left >= 0 ? t : "+" + t + " over";
-    el.classList.toggle("is-over", left < 0);
-  }
-
   // ---------- Layout ----------
   function renderSteps() {
     const list = $("pd-steps");
@@ -166,7 +152,6 @@
     $("pd-viewing").hidden = key === today;
     $("pd-viewing-text").textContent = "You're looking at Drill " + brief.number + ".";
     renderSteps();
-    updateTimer();
     const body = $("pd-body");
     const view = { brief: viewBrief, feel: viewFeel, colors: viewColors, screen: viewScreen, reveal: viewReveal }[state.step] || viewBrief;
     body.replaceChildren(view());
@@ -202,8 +187,8 @@
       h("div", { class: "pd-actions" },
         state.started
           ? h("button", { type: "button", class: "btn", onclick: () => go(state.versions.length ? "reveal" : "feel"), text: state.versions.length ? "Open the reveal →" : "Continue →" })
-          : h("button", { type: "button", class: "btn", onclick: () => { state.started = Date.now(); go("feel"); }, text: "Start the 20 minutes →" }),
-        h("span", { class: "hint", text: state.started ? "The clock keeps running. It never locks you out." : "Read it, then start the clock." })),
+          : h("button", { type: "button", class: "btn", onclick: () => { state.started = Date.now(); go("feel"); }, text: "Start →" }),
+        h("span", { class: "hint", text: state.started ? "Pick up where you left off." : "Read it, then start." })),
       pastList());
   }
 
@@ -222,7 +207,6 @@
         list.append(h("li", { class: "pd-past__item" },
           h("span", { class: "pd-past__n", text: "Drill " + b.number }),
           h("span", { class: "pd-past__name", text: done ? b.product + " · " + s.versions.length + (s.versions.length > 1 ? " versions" : " version") : "Not finished" }),
-          s.versions && s.versions[0] && s.versions[0].next ? h("span", { class: "pd-past__next", text: "Practice next: " + s.versions[s.versions.length - 1].next }) : null,
           h("button", { type: "button", class: "btn btn--sm btn--ghost", text: "Open", onclick: () => openDay(d) })));
       }
     });
@@ -593,14 +577,6 @@
                 h("p", { class: "pd-check__detail", text: c.detail }), c.rule ? h("p", { class: "pd-check__rule", text: c.rule }) : null) : null)))),
           h("p", { class: "pd-note", text: "Contrast thresholds are WCAG 2 AA. The other thresholds are starting values." })))));
 
-    // 4. Practice next
-    const nextIn = h("input", { type: "text", class: "pd-next__input", value: v.next || (v.analysis && v.analysis.next) || "", placeholder: "One line: what to practice next time", maxlength: 160 });
-    const saved = h("span", { class: "hint" });
-    wrap.append(h("section", { class: "pd-sec" },
-      h("h3", { class: "pd-sec__title" }, h("span", { class: "pd-sec__n", text: "4" }), "Practice next"),
-      h("div", { class: "pd-next" }, nextIn,
-        h("button", { type: "button", class: "btn btn--sm", text: "Save", onclick: () => { v.next = nextIn.value.trim(); save(); saved.textContent = "Saved."; } }), saved)));
-
     // Revise
     wrap.append(h("div", { class: "pd-actions" },
       h("button", { type: "button", class: "btn btn--ghost", text: "Revise as version " + (state.versions.length + 1), onclick: () => {
@@ -744,7 +720,6 @@
     // An analysis that never finished (page closed mid-way) starts again.
     state.versions.forEach((v) => { if (v.analysis && v.analysis.status === "loading") v.analysis = null; });
     render();
-    if (!tick) tick = setInterval(updateTimer, 1000);
   }
 
   document.addEventListener("DOMContentLoaded", () => {
