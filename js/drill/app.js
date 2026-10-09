@@ -516,9 +516,13 @@
       h("h3", { class: "pd-sec__title" }, h("span", { class: "pd-sec__n", text: "1" }), "This brief was written from ", h("strong", { text: brief.product })),
       h("p", { class: "pd-sec__lede", text: "Next to it, " + brief.competitors.join(" and ") + ". One real screen each, with its colors read from the screenshot's pixels." }));
     const cards = h("div", { class: "pd-refs" });
-    real.append(cards);
+    const compare = h("div", { class: "pd-compare" });
+    real.append(cards, h("h4", { class: "pd-sub pd-compare__title", text: "Palettes side by side" }), compare,
+      h("p", { class: "pd-note", text: "Each bar shows how much of the screen each color covers. The ringed swatch is the most saturated color that covers at least 1% of the screen." }));
+    compare.replaceChildren(...compareRows(v, null));
     const fill = (res) => {
       cards.replaceChildren(...res.products.map(refCard));
+      compare.replaceChildren(...compareRows(v, res.products));
       if (res.status === "ok") return;
       // Say exactly why the screens are missing, and offer another try.
       const why = res.status === "unavailable"
@@ -588,6 +592,29 @@
       h("span", { class: "hint", text: "Version " + v.n + " stays as it is. The revision saves beside it." })));
     wrap.append(h("p", { class: "pd-note", text: "Reference palettes come from screenshot pixels, so they include photos and illustrations, and their hex values are approximate. What each reference color is used for isn't known." }));
     return wrap;
+  }
+
+  // You and each real product, one row each: share bar, then the swatches.
+  function compareRows(v, products) {
+    const yours = { name: "You", tag: "Version " + v.n, palette: v.colors.map((c) => ({ hex: c.hex, share: c.share, C: c.C, label: c.label })) };
+    const rows = [yours, ...(products || [brief.product, ...brief.competitors].map((n, i) => ({ name: n, role: i ? "competitor" : "product", loading: true })))
+      .map((p) => ({ name: p.name, tag: p.role === "product" ? "The brief" : "", palette: p.found ? p.palette : null, loading: p.loading }))];
+    return rows.map((r) => {
+      const head = h("div", { class: "pd-cmp__name" }, h("strong", { text: r.name }), r.tag ? h("span", { class: "pd-cmp__tag", text: r.tag }) : null);
+      if (!r.palette) return h("div", { class: "pd-cmp" }, head, h("p", { class: "hint pd-cmp__empty", text: r.loading ? "Loading…" : "No screen to measure." }));
+      const pal = r.palette.filter((c) => c.share > 0).slice().sort((a, b) => b.share - a.share);
+      const big = pal.filter((c) => c.share >= 1);
+      const lead = (big.length ? big : pal).slice().sort((a, b) => b.C - a.C)[0];
+      const pct = (x) => (x < 10 ? x.toFixed(1) : Math.round(x)) + "%";
+      return h("div", { class: "pd-cmp" + (r.name === "You" ? " is-you" : "") }, head,
+        h("div", { class: "pd-cmp__bar", role: "img", "aria-label": r.name + " color shares" },
+          pal.map((c) => h("span", { style: "background:" + c.hex + ";flex-grow:" + c.share, title: c.hex + " · " + pct(c.share) }))),
+        h("div", { class: "pd-cmp__chips" }, pal.slice(0, 8).map((c) =>
+          h("div", { class: "pd-cmp__chip" + (c === lead && lead.C >= 0.04 ? " is-lead" : "") },
+            h("span", { class: "pd-cmp__sw", style: "background:" + c.hex }),
+            h("span", { class: "pd-cmp__hex", text: c.label || c.hex }),
+            h("span", { class: "pd-cmp__pct", text: pct(c.share) + (c === lead && lead.C >= 0.04 ? " · most saturated" : "") })))));
+    });
   }
 
   function refsMessage(status) {
