@@ -254,3 +254,7 @@ body[data-section="drill"] .day-banner { display: none; }
   .pd-cmp__name { grid-row: auto; display: flex; align-items: center; gap: 8px; }
   .pd-cmp__chip { width: 64px; }
 }
+.pd-an__title { margin-top: 28px; }
+.pd-check__meaning { margin: 2px 0 0; font-size: 14px; color: var(--ink); }
+.pd-check__more { margin-top: 4px; font-size: 12px; color: var(--ink-mute); }
+.pd-check__more summary { cursor: pointer; }

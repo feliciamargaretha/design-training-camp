@@ -104,6 +104,7 @@
   }
 
   const verdict = (ok) => (ok ? "clear" : "look");
+  const nm = (hex) => C.name(hex);
   const nameOf = (c) => c.scale + " " + c.stop;
 
   function run(m, bases, roleLabel) {
@@ -115,6 +116,8 @@
       id: "text", name: "Text contrast", rule: "Every text color on its background is at least 4.5:1.",
       result: verdict(t.ratio >= T.text), value: f.ratio(t.ratio),
       detail: "Lowest: " + roleLabel(t.role) + " (" + t.fg.label + ") on " + t.bg.label + " · " + f.ratio(t.ratio) + ".",
+      meaning: t.ratio >= T.text ? "All text is easy to read on its background."
+        : roleLabel(t.role) + " (" + nm(t.fg.hex) + " on " + nm(t.bg.hex) + ") is too faint to read comfortably.",
     } : { id: "text", name: "Text contrast", result: "skip", detail: "No text on the screen." });
 
     const c = worst(m.controlPairs);
@@ -122,6 +125,8 @@
       id: "control", name: "Control contrast", rule: "Buttons, input borders and icons are at least 3:1 against what's behind them.",
       result: verdict(c.ratio >= T.control), value: f.ratio(c.ratio),
       detail: "Lowest: " + roleLabel(c.role) + " (" + c.fg.label + ") on " + c.bg.label + " · " + f.ratio(c.ratio) + ".",
+      meaning: c.ratio >= T.control ? "Buttons, input borders and icons stand out enough to find and use."
+        : roleLabel(c.role) + " (" + nm(c.fg.hex) + " on " + nm(c.bg.hex) + ") nearly disappears, so people may miss it.",
     } : { id: "control", name: "Control contrast", result: "skip", detail: "No controls on the screen." });
 
     const bg = m.roleColor("bg"), card = m.roleColor("surface");
@@ -131,6 +136,9 @@
         id: "surface", name: "Surface step", rule: "Background and card differ by 0.02–0.10 in lightness.",
         result: verdict(d >= T.surfaceMin - 1e-9 && d <= T.surfaceMax + 1e-9), value: f.d(d),
         detail: "Background " + nameOf(bg) + " (L " + bg.fmt.L + ") vs card " + nameOf(card) + " (L " + card.fmt.L + "): " + f.d(d) + (d < T.surfaceMin ? ", too close to see." : d > T.surfaceMax ? ", a hard jump." : "."),
+        meaning: d < T.surfaceMin - 1e-9 ? "Cards and background are almost the same, so cards barely separate from the page."
+          : d > T.surfaceMax + 1e-9 ? "Cards jump hard off the background, which makes the screen feel heavy and boxy."
+          : "Cards sit a gentle step off the background: clearly separate, but calm.",
       });
     }
 
@@ -147,31 +155,39 @@
         id: "lead", name: "Saturation lead", rule: "One color is clearly the most saturated: 0.04 chroma above the next (status colors aside).",
         result: verdict(gap >= T.lead - 1e-9), value: f.dC(gap),
         detail: nameOf(lead) + " leads at C " + lead.fmt.C + (next ? "; next is " + nameOf(next) + " at C " + next.fmt.C + ", a gap of " + f.dC(gap) + "." : "; nothing else is saturated."),
+        meaning: lead.C < 0.04 ? "Nothing on the screen is really colorful yet, so no color leads the eye."
+          : gap >= T.lead - 1e-9 ? "Your " + nm(lead.hex) + " is clearly the loudest color, so the eye knows where to go."
+          : "Your " + nm(lead.hex) + " and " + nm(next.hex) + " are almost equally loud, so they compete for attention.",
       });
       checks.push({
         id: "accent", name: "Accent share", rule: "The most saturated color covers 10% of the screen or less.",
         result: verdict(lead.share <= T.accentShare + 1e-9), value: lead.fmt.share,
         detail: nameOf(lead) + " covers " + lead.fmt.share + " of the screen.",
+        meaning: lead.C < 0.04 ? "There's no loud color to measure yet."
+          : lead.share <= T.accentShare + 1e-9 ? "Your loudest color, " + nm(lead.hex) + ", is used sparingly, so it stays special."
+          : "Your loudest color, " + nm(lead.hex) + ", covers a lot of the screen, so it stops feeling like an accent and starts to tire the eye.",
       });
     }
 
     // Same or decisively different, per dimension, for non-neutral base pairs.
     const chroma = bases.filter((b) => b.kind !== "neutral");
-    const muddy = [], pairs = [];
+    const muddy = [], pairs = [], muddyWords = [];
     for (let i = 0; i < chroma.length; i++) for (let j = i + 1; j < chroma.length; j++) {
       const a = chroma[i], b = chroma[j];
       const dL = Math.abs(a.L - b.L), dC = Math.abs(a.C - b.C);
       const hue = a.C >= T.hueMinC && b.C >= T.hueMinC;
       const dH = hue ? C.hueDiff(a.H, b.H) : null;
       const cls = (v, s, d) => (v <= s + 1e-9 ? "same" : v >= d - 1e-9 ? "different" : "in between");
-      const r = { a: a.label, b: b.label, L: cls(dL, T.sameL, T.diffL), C: cls(dC, T.sameC, T.diffC), H: hue ? cls(dH, T.sameH, T.diffH) : "skipped", dL: f.d(dL), dC: f.dC(dC), dH: hue ? f.H(dH) : "—" };
+      const r = { an: nm(a.hex), bn: nm(b.hex), a: a.label, b: b.label, L: cls(dL, T.sameL, T.diffL), C: cls(dC, T.sameC, T.diffC), H: hue ? cls(dH, T.sameH, T.diffH) : "skipped", dL: f.d(dL), dC: f.dC(dC), dH: hue ? f.H(dH) : "—" };
       pairs.push(r);
-      ["L", "C", "H"].forEach((dim) => { if (r[dim] === "in between") muddy.push(r.a + " / " + r.b + " " + dim + " " + (dim === "L" ? r.dL : dim === "C" ? r.dC : r.dH)); });
+      ["L", "C", "H"].forEach((dim) => { if (r[dim] === "in between") { muddy.push(r.a + " / " + r.b + " " + dim + " " + (dim === "L" ? r.dL : dim === "C" ? r.dC : r.dH)); muddyWords.push(r.a + " (" + r.an + ") and " + r.b + " (" + r.bn + ") are close in " + ({ L: "lightness", C: "saturation", H: "hue" })[dim] + " but not the same"); } });
     }
     if (pairs.length) checks.push({
       id: "same", name: "Same or decisively different", rule: "For each pair of non-neutral base colors, lightness, chroma and hue are either the same or clearly different.",
       result: verdict(!muddy.length), value: muddy.length ? muddy.length + " in between" : "all decisive", pairs,
       detail: muddy.length ? "In between: " + muddy.join("; ") + "." : "Every pair is decisively same or different on each dimension.",
+      meaning: muddy.length ? muddyWords.join("; ") + ". Near-misses like this read as accidents rather than choices; make them match or push them clearly apart."
+        : "Your colors are either clearly related or clearly different, so the palette looks intentional.",
     });
 
     const statuses = bases.filter((b) => b.kind === "status");
@@ -187,6 +203,8 @@
         id: "status", name: "Status tier", rule: "Status colors sit within 0.06 lightness of each other and at least 40° of hue apart.",
         result: verdict(!bad.length), value: "ΔL " + f.d(maxL) + " · ΔH " + f.H(minH),
         detail: "Lightness apart " + f.d(maxL) + ", hue apart " + f.H(minH) + ".",
+        meaning: !bad.length ? "Your status colors feel like one set: the same weight, with hues far enough apart to tell them apart."
+          : "Your status colors don't feel like one set: some are heavier than others, or too close in hue to tell apart at a glance.",
       });
     }
 
@@ -195,6 +213,8 @@
       id: "restraint", name: "Restraint", rule: "The screen uses 12 distinct stops or fewer.",
       result: verdict(stops <= T.restraint), value: String(stops),
       detail: stops + " distinct stops on the screen.",
+      meaning: stops <= T.restraint ? "You kept to a small set of shades, so the screen feels controlled."
+        : "So many shades are in play that the screen starts to feel uncontrolled.",
     });
 
     return checks;

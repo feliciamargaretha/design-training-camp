@@ -1,34 +1,51 @@
-// Palette Drill: Claude's analysis. Claude gets only measured values, already
-// formatted, and must quote them. Every number in its answer is checked
-// against the data it was given; a line with a number that isn't there is
-// asked for again once, then dropped.
+// Palette Drill: Claude's analysis. Claude gets the measurements already
+// turned into words (color names, how light, how vivid, how much of the
+// screen) and writes what they mean, never the numbers themselves. An answer
+// with numbers, percentages, ratios or hex codes in it is asked for again
+// once, then the lines that still have them are dropped.
 (function () {
   const CACHE = { gcTime: 86400000 };
+  const VERSION = 2;
 
   async function getSample() {
     try { return window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch (_) { return null; }
   }
+
+  const N = (hex) => window.PDColor.name(hex);
+  const light = (L) => (L > 0.9 ? "very light" : L > 0.75 ? "light" : L > 0.55 ? "mid-light" : L > 0.4 ? "mid-dark" : L > 0.25 ? "dark" : "very dark");
+  const vivid = (C) => (C < 0.03 ? "neutral, no real color" : C < 0.08 ? "soft" : C < 0.14 ? "medium" : "vivid");
+  const amount = (x) => (x >= 60 ? "most of the screen" : x >= 30 ? "a large part of the screen" : x >= 12 ? "a good part of the screen" : x >= 4 ? "a small part of the screen" : x >= 1 ? "a touch" : "tiny specks");
+  const avgL = (pal) => { const t = pal.reduce((a, c) => a + c.share, 0) || 1; return pal.reduce((a, c) => a + c.L * c.share, 0) / t; };
+  const loudest = (pal, skip) => pal.filter((c) => c.share >= 1 && !(skip && skip(c))).sort((a, b) => b.C - a.C)[0];
 
   function dataBlock({ brief, feel, why, bases, colors, checks, refs }) {
     const lines = [];
     lines.push("BRIEF: " + brief.what + " " + brief.positioning + " Personality: " + brief.personality + " " + brief.avoid + " Mode: " + brief.mode + ". Screen: " + brief.where);
     lines.push("", "FEEL WORDS the learner chose: " + (feel.length ? feel.join(", ") : "none written"));
     lines.push("THE LEARNER'S OWN EXPLANATION of how these words shape the colors: " + (why ? '"' + why.replace(/\s+/g, " ") + '"' : "none written"));
-    lines.push("", "PALETTE the learner picked (exact hex; OKLCH measured; the tag is the learner's own, \"color\" means untagged):");
-    bases.forEach((b) => lines.push("- " + b.label + " (" + b.kind + "): " + b.hex + " · L " + b.fmt.L + " · C " + b.fmt.C + " · H " + b.fmt.H));
-    lines.push("", "THE LEARNER'S SCREEN, each color used (scale and stop, hex, OKLCH, share of the screen) and the elements using it:");
-    colors.forEach((c) => lines.push("- " + c.label + ": " + c.hex + " · L " + c.fmt.L + " · C " + c.fmt.C + " · H " + c.fmt.H + " · share " + c.fmt.share + " · used for: " + c.roles.join(", ")));
-    lines.push("", "MEASURED CHECKS:");
-    checks.forEach((c) => lines.push("- " + c.name + ": " + (c.result === "clear" ? "Clear" : c.result === "look" ? "Look again" : "Not run") + (c.value ? " (" + c.value + ")" : "") + ". " + (c.detail || "") + (c.rule ? " Rule: " + c.rule : "")));
-    lines.push("", "REAL PRODUCTS (palettes read from one screenshot's pixels; include photos and illustrations; hex is approximate; the role of each color is unknown):");
+    lines.push("", "PALETTE the learner picked (their own tags; \"color\" means untagged):");
+    bases.forEach((b) => lines.push("- " + b.label + " (" + b.kind + "): " + N(b.hex) + "; " + light(b.L) + ", " + vivid(b.C)));
+    lines.push("", "THE LEARNER'S SCREEN, each color used, largest first:");
+    colors.forEach((c) => lines.push("- " + c.label + " (" + N(c.hex) + "; " + light(c.L) + ", " + vivid(c.C) + "): covers " + amount(c.share) + "; used for " + c.roles.join(", ")));
+    lines.push("", "MEASURED CHECKS (what each result means):");
+    checks.forEach((c) => lines.push("- " + c.name + ": " + (c.result === "clear" ? "Clear" : c.result === "look" ? "Look again" : "Not run") + ". " + (c.meaning || "")));
+    const mine = loudest(colors, (c) => c.kind === "status");
+    const myL = avgL(colors);
+    lines.push("", "REAL PRODUCTS (each read from one screenshot's pixels, so photos and illustrations count; what each color is used for isn't known):");
     refs.forEach((p) => {
-      if (!p.found) { lines.push("- " + p.name + (p.role === "product" ? " (the product this brief is written from)" : "") + ": no screen available."); return; }
-      const s = p.summary;
-      lines.push("- " + p.name + " in words: " + window.PDRefs.describe(p.palette) + " Colors by name, largest first: " +
-        p.palette.slice(0, 6).map((c) => window.PDColor.name(c.hex)).join(", ") + ".");
-      lines.push("  " + p.name + (p.role === "product" ? " (the product this brief is written from)" : "") + ": lightness range L " + s.lightMin + " to " + s.lightMax +
-        (s.owner ? "; most saturated " + s.owner.hex + " (C " + s.owner.C + ", H " + s.owner.H + ") covering " + s.owner.share : "") +
-        "; colors: " + s.colors.map((c) => c.hex + " L " + c.L + " C " + c.C + " " + c.share).join(", "));
+      const who = p.name + (p.role === "product" ? " (the product this brief is written from)" : "");
+      if (!p.found) { lines.push("- " + who + ": no screen available."); return; }
+      lines.push("- " + who + ": " + window.PDRefs.describe(p.palette));
+      lines.push("  Its colors, largest first: " + p.palette.filter((c) => c.share >= 0.5).slice(0, 6).map((c) => N(c.hex) + " (" + amount(c.share) + ")").join(", ") + ".");
+      const theirs = loudest(p.palette.map((c) => ({ ...c, ...window.PDColor.hexToOklch(c.hex) })), (c) => /white|gray|black/.test(N(c.hex)));
+      const pl = avgL(p.palette.map((c) => ({ ...c, ...window.PDColor.hexToOklch(c.hex) })));
+      const cmp = [];
+      cmp.push("overall their screen is " + (Math.abs(pl - myL) < 0.08 ? "about as light as the learner's" : pl > myL ? "lighter than the learner's" : "darker than the learner's"));
+      if (theirs && mine) {
+        cmp.push("their loudest color, " + N(theirs.hex) + ", is " + (Math.abs(theirs.C - mine.C) < 0.03 ? "about as vivid as" : theirs.C > mine.C ? "more vivid than" : "softer than") + " the learner's loudest, " + N(mine.hex) +
+          ", and covers " + (Math.abs(theirs.share - mine.share) < 2 ? "about the same amount of the screen" : theirs.share > mine.share ? "more of the screen" : "less of the screen"));
+      }
+      lines.push("  Compared with the learner: " + cmp.join("; ") + ".");
     });
     return lines.join("\n");
   }
@@ -38,36 +55,29 @@
   function prompt(data, note) {
     return [
       "You are a senior brand and UI designer coaching a learner in a 20-minute color palette drill. You cannot see any screen.",
-      "Work ONLY from the measured values below. Quote numbers exactly as written there. Never estimate, round, convert or invent a number; if a value isn't below, say it in words.",
+      "The page measured everything and turned it into words below. Your job is to say what it MEANS for how the screen looks and feels, the way you'd explain it to a junior designer at their desk.",
+      "NEVER write numbers, percentages, ratios, degrees, hex codes or lightness/chroma/hue values. Name colors in words (\"deep forest green\", \"bright lime\").",
+      "Bad: \"Lightness runs from L 0.20 to 0.29; the most saturated color is #9fe572, covering 1.1%.\"",
+      "Good: \"Everything sits in a narrow band of darks, so the only thing that pops is one small bright lime, which makes it feel like a signal light.\"",
+      "Only say what the data supports. Stick to what each finding means and why it matters.",
       "",
       data,
       "",
-      "Write five parts, short and specific, plain words:",
-      "1. real: for each real product with a screen, one plain-language line on what it did with color, the way a designer would say it out loud: is it light or dark, what is the base, what carries the brand, how much the loud color is used and where it probably sits (buttons, highlights, illustrations). Use color names (\"deep forest green\", \"bright lime\"), NOT numbers, L/C/H values or hex codes. Then 'shared': what they have in common; 'split': where they differ, also in plain words. If a product has no screen, line: \"No screen to measure.\"",
-      "2. right: up to 3 things the learner got right, each tied to one measured value from the table or checks.",
-      "3. harmony: verdict \"harmonious\" or \"not yet\" with one line why. If not yet, name the ONE color to change in 'color' and in 'change' the dimension (lightness, chroma or hue) and direction (up/down, warmer/cooler), no new numbers.",
+      "Write five parts, short and specific:",
+      "1. real: for each real product with a screen, one line on what it did with color and what that achieves: light or dark, what the base is, what carries the brand, how much the loud color is used and what that does. Then 'shared': what they have in common; 'split': where they differ. If a product has no screen, line: \"No screen to measure.\"",
+      "2. right: up to 3 things the learner got right, each saying what the choice achieves.",
+      "3. harmony: verdict \"harmonious\" or \"not yet\" with one line why. If not yet, name the ONE color to change in 'color' and in 'change' say how in words (lighter or darker, softer or more vivid, warmer or cooler) and what that would fix.",
       "4. feel: one line per feel word saying whether the palette held or broke it, judged against the learner's own explanation where it covers that word.",
       "5. next: one line, the one thing to practice next.",
-      "Hex codes count as numbers: only use hex codes that appear above.",
       note || "",
       "Reply with only JSON: " + SHAPE,
     ].join("\n");
   }
 
-  // Numbers and hex codes in the data Claude got.
-  function allowed(data) {
-    const hex = new Set((data.match(/#[0-9a-f]{6}\b/gi) || []).map((h) => h.toLowerCase()));
-    const nums = new Set((data.replace(/#[0-9a-f]{6}\b/gi, " ").match(/\d+(?:\.\d+)?/g) || []).map(Number));
-    [1, 2, 3, 4, 5].forEach((n) => nums.add(n));
-    return { hex, nums };
-  }
-
-  function badTokens(text, ok) {
-    const bad = [];
-    (text.match(/#[0-9a-f]{3,8}\b/gi) || []).forEach((h) => { if (!ok.hex.has(h.toLowerCase())) bad.push(h); });
-    (text.replace(/#[0-9a-f]{3,8}\b/gi, " ").match(/\d+(?:\.\d+)?/g) || []).forEach((n) => { if (!ok.nums.has(Number(n))) bad.push(n); });
-    return bad;
-  }
+  // Numbers that shouldn't be in the answer. Plain counts and names like
+  // "Neutral 50" or "version 2" are fine.
+  const FORBIDDEN = /#[0-9a-f]{3,8}\b|\d+\.\d+|\d+\s?%|\d+\s?:\s?1\b|\d+\s?°|\b[LCH]\s?\d/gi;
+  function badTokens(text) { return text.match(FORBIDDEN) || []; }
 
   const str = (x) => (typeof x === "string" ? x.trim() : "");
 
@@ -96,9 +106,9 @@
     return out;
   }
 
-  function audit(a, ok) {
+  function audit(a) {
     const bad = [];
-    strings(a).forEach(([o, k]) => { const b = badTokens(String(o[k] || ""), ok); if (b.length) bad.push({ o, k, b }); });
+    strings(a).forEach(([o, k]) => { const b = badTokens(String(o[k] || "")); if (b.length) bad.push({ o, k, b }); });
     return bad;
   }
 
@@ -106,28 +116,27 @@
     const sample = await getSample();
     if (!sample) return { status: "unavailable" };
     const data = dataBlock(input);
-    const ok = allowed(data);
     try {
-      onStatus && onStatus("Claude is reading your numbers…");
+      onStatus && onStatus("Claude is reading your palette…");
       let a = clean(await sample.json(prompt(data), { modelTier: "default", cache: CACHE, onText: () => onStatus && onStatus("Writing the analysis…") }));
       if (!a) throw { code: "invalid_json" };
-      let bad = audit(a, ok);
+      let bad = audit(a);
       if (bad.length) {
-        onStatus && onStatus("Checking the numbers again…");
-        const note = "Your last answer used numbers that are not in the data (" + [...new Set(bad.flatMap((x) => x.b))].join(", ") + "). Use only numbers written above.";
+        onStatus && onStatus("Rewriting without numbers…");
+        const note = "Your last answer still had numbers or codes in it (" + [...new Set(bad.flatMap((x) => x.b))].join(", ") + "). Rewrite it with none: say what they mean instead.";
         const again = clean(await sample.json(prompt(data, note), { modelTier: "default", cache: { ...CACHE, refresh: true } }));
-        if (again) { a = again; bad = audit(a, ok); }
+        if (again) { a = again; bad = audit(a); }
       }
       let dropped = 0;
       bad.forEach(({ o, k }) => { o[k] = ""; dropped++; });
       a.right = a.right.filter(Boolean);
       a.real.products = a.real.products.filter((p) => p.line);
       a.feel = a.feel.filter((f) => f.line);
-      return { status: "ok", analysis: a, dropped };
+      return { status: "ok", analysis: a, dropped, v: VERSION };
     } catch (err) {
       return { status: (err && err.code) || "upstream_error" };
     }
   }
 
-  window.PDAnalysis = { analyze, dataBlock, allowed, badTokens };
+  window.PDAnalysis = { analyze, dataBlock, badTokens, VERSION };
 })();

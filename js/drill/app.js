@@ -467,6 +467,15 @@
   // ---------- Lock ----------
   function lock(root, scales) {
     const d = state.draft;
+    state.versions.push({ n: state.versions.length + 1, lockedAt: Date.now(), draft: JSON.parse(JSON.stringify(d)), ...measureScreen(root, d, scales), analysis: null, next: "" });
+    state.editing = false;
+    shownVersion = state.versions.length - 1;
+    selected = null;
+    go("reveal");
+  }
+
+  // Colors, shares and checks for a colored screen that's on the page.
+  function measureScreen(root, d, scales) {
     const colorOf = (el) => resolve(d, valueFor(d, el), scales);
     const m = window.PDChecks.measure(root, colorOf, scales.filter((s) => s.scale).map((s) => ({ id: s.id, label: s.label, kind: s.kind })));
     const roleNames = {};
@@ -479,11 +488,7 @@
     const bases = baseInfo(d);
     const checks = window.PDChecks.run(m, bases, (r) => TPL.roleLabel(r, brief));
     const colors = m.colors.map((c) => ({ key: c.key, label: c.label, hex: c.hex, scaleId: c.scaleId, stop: c.stop, base: c.base, kind: c.kind, L: c.L, C: c.C, H: c.H, share: c.share, fmt: c.fmt, roles: [...(roleNames[c.key] || [])] }));
-    state.versions.push({ n: state.versions.length + 1, lockedAt: Date.now(), draft: JSON.parse(JSON.stringify(d)), bases, colors, checks, analysis: null, next: "" });
-    state.editing = false;
-    shownVersion = state.versions.length - 1;
-    selected = null;
-    go("reveal");
+    return { bases, colors, checks };
   }
 
   // ---------- 5. Reveal ----------
@@ -517,8 +522,7 @@
       h("p", { class: "pd-sec__lede", text: "Next to it, " + brief.competitors.join(" and ") + ". One real screen each, with its colors read from the screenshot's pixels." }));
     const cards = h("div", { class: "pd-refs" });
     const compare = h("div", { class: "pd-compare" });
-    real.append(cards, h("h4", { class: "pd-sub pd-compare__title", text: "Palettes side by side" }), compare,
-      h("p", { class: "pd-note", text: "Each bar shows how much of the screen each color covers. The ringed swatch is the most saturated color that covers at least 1% of the screen." }));
+    real.append(cards);
     compare.replaceChildren(...compareRows(v, null));
     const fill = (res) => {
       cards.replaceChildren(...res.products.map(refCard));
@@ -546,14 +550,32 @@
     }
     wrap.append(real);
 
-    // 2. Your screen measured
+    // 2. Side by side, with Claude's read right under it
+    const an = h("div", { id: "pd-analysis" });
+    wrap.append(h("section", { class: "pd-sec" },
+      h("h3", { class: "pd-sec__title" }, h("span", { class: "pd-sec__n", text: "2" }), "Side by side, and what it means"),
+      h("p", { class: "pd-sec__lede", text: "Your palette next to theirs. Each bar shows how much of the screen each color covers; the ringed swatch is the loudest color." }),
+      compare, an));
+    drawAnalysis(an, v, vi);
+    // Versions locked before the checks explained themselves: measure again.
+    if (!v.checks.some((c) => c.meaning)) {
+      requestAnimationFrame(() => {
+        if (!root.isConnected) return;
+        Object.assign(v, measureScreen(root, v.draft, scalesFor(v.draft)));
+        v.analysis = null;
+        save();
+        render();
+      });
+    }
+
+    // 3. Your screen measured
     const scales = scalesFor(v.draft);
     const root = TPL.render(brief.template, brief);
     applyColors(root, v.draft, scales);
     root.classList.add("pd-static");
     const t = TPL.TEMPLATES[brief.template];
     wrap.append(h("section", { class: "pd-sec" },
-      h("h3", { class: "pd-sec__title" }, h("span", { class: "pd-sec__n", text: "2" }), "Your screen, measured"),
+      h("h3", { class: "pd-sec__title" }, h("span", { class: "pd-sec__n", text: "3" }), "Your screen, checked"),
       h("div", { class: "pd-measured" },
         h("div", { class: "pd-measured__screen" }, stage(root, t, 560)),
         h("div", { class: "pd-measured__data" },
@@ -565,14 +587,11 @@
           h("p", { class: "pd-note", text: "Share is measured from element sizes. Text counts at about a third of its box, icons at a quarter." }),
           h("ul", { class: "pd-checks" }, v.checks.map((c) => h("li", { class: "pd-check pd-check--" + c.result },
             h("span", { class: "pd-check__result", text: c.result === "clear" ? "Clear" : c.result === "look" ? "Look again" : "Not run" }),
-            h("div", {}, h("p", { class: "pd-check__name" }, c.name, c.value ? h("span", { class: "pd-check__value", text: " · " + c.value }) : null),
-              h("p", { class: "pd-check__detail", text: c.detail }), c.rule ? h("p", { class: "pd-check__rule", text: c.rule }) : null)))),
+            h("div", {}, h("p", { class: "pd-check__name", text: c.name }),
+              h("p", { class: "pd-check__meaning", text: c.meaning || c.detail }),
+              c.meaning ? h("details", { class: "pd-check__more" }, h("summary", { text: "The measurement" }),
+                h("p", { class: "pd-check__detail", text: c.detail }), c.rule ? h("p", { class: "pd-check__rule", text: c.rule }) : null) : null)))),
           h("p", { class: "pd-note", text: "Contrast thresholds are WCAG 2 AA. The other thresholds are starting values." })))));
-
-    // 3. Claude's analysis
-    const an = h("section", { class: "pd-sec", id: "pd-analysis" });
-    wrap.append(an);
-    drawAnalysis(an, v, vi);
 
     // 4. Practice next
     const nextIn = h("input", { type: "text", class: "pd-next__input", value: v.next || (v.analysis && v.analysis.next) || "", placeholder: "One line: what to practice next time", maxlength: 160 });
@@ -640,7 +659,7 @@
   }
 
   function drawAnalysis(an, v, vi) {
-    const title = h("h3", { class: "pd-sec__title" }, h("span", { class: "pd-sec__n", text: "3" }), "Claude's analysis");
+    const title = h("h4", { class: "pd-sub pd-an__title", text: "Claude's read" });
     const a = v.analysis;
     if (!a || a.status === "loading") {
       an.replaceChildren(title, h("p", { class: "hint pd-loading", text: (a && a.text) || "Waiting for the real products, then Claude reads the numbers…" }));
@@ -666,9 +685,9 @@
         h("div", { class: "pd-an__part" }, h("p", { class: "pd-an__h", text: "Feel translation" }),
           h("ul", {}, x.feel.map((f) => h("li", {}, h("span", { class: "pd-verdict pd-verdict--" + (f.verdict === "held" ? "ok" : "no"), text: f.verdict === "held" ? "Held" : "Broke" }), " ", h("strong", { text: f.word + ": " }), f.line)))),
         x.next ? h("div", { class: "pd-an__part" }, h("p", { class: "pd-an__h", text: "Practice next" }), h("p", { text: x.next })) : null),
-      ...(a.dropped ? [h("p", { class: "pd-note", text: a.dropped + (a.dropped === 1 ? " line was" : " lines were") + " left out because a number in it didn't match the table." })] : []),
+      ...(a.dropped ? [h("p", { class: "pd-note", text: a.dropped + (a.dropped === 1 ? " line was" : " lines were") + " left out because it still quoted numbers instead of saying what they mean." })] : []),
       h("div", { class: "pd-refs-why" },
-        h("p", { class: "pd-note", text: "Written by Claude from the measured values only. It didn't see your screen." }),
+        h("p", { class: "pd-note", text: "Written by Claude from the page's measurements, put into words. It didn't see your screen." }),
         h("button", { type: "button", class: "text-btn", text: "Write it again", onclick: () => runAnalysis(vi, true) })));
   }
 
@@ -689,6 +708,8 @@
   function analyzeFor(v, vi, res) {
     if (v.analysis == null) return runAnalysis(vi);
     const a = v.analysis;
+    // Written before analyses explained meaning instead of numbers.
+    if (a.status === "ok" && a.v !== window.PDAnalysis.VERSION) return runAnalysis(vi, true);
     if (a.status === "ok" && res && res.products.some((p) => p.found) && a.refKey !== refKey(res.products)) runAnalysis(vi, true);
   }
 
