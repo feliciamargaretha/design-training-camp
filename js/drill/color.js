@@ -136,5 +136,24 @@
     return { h: h % 360, s: Math.round(s * 100), l: Math.round(l * 100) };
   }
 
-  window.PDColor = { STOPS, LADDER, parseHex, normHex, hexToOklch, oklchToHex, scale, contrast, gray, hueDiff, hexToHsl };
+  // A plain-language name for a color: "near-white", "dark navy", "bright lime".
+  function name(hex) {
+    const o = hexToOklch(hex);
+    if (!o) return "";
+    const { L, C, H } = o;
+    if (C < 0.03 || (L < 0.22 && C < 0.09)) {
+      return L > 0.96 ? "white" : L > 0.88 ? "near-white" : L > 0.72 ? "light gray" : L > 0.5 ? "gray" : L > 0.3 ? "dark gray" : "near-black";
+    }
+    const hues = [[20, "pink"], [45, "red"], [70, "orange"], [100, "yellow"], [142, "lime"], [165, "green"], [195, "teal"], [235, "cyan"], [270, "blue"], [300, "violet"], [335, "purple"], [361, "magenta"]];
+    let hue = (hues.find(([max]) => H < max) || hues[0])[1];
+    if (H >= 345) hue = "pink";
+    if (L < 0.24 && C < 0.09) return (hue === "cyan" || hue === "violet" ? "blue" : hue) + "-black";
+    if (hue === "orange" && L < 0.55) hue = "brown";
+    if (hue === "blue" && L < 0.4) hue = "navy";
+    if ((hue === "green" || hue === "lime") && L < 0.45) hue = "forest green";
+    const tone = L > 0.88 ? "pale " : L < 0.32 ? (hue === "navy" || hue === "forest green" ? "deep " : "very dark ") : L < 0.5 ? "dark " : C > 0.15 ? "bright " : C < 0.07 ? "muted " : "";
+    return tone + hue;
+  }
+
+  window.PDColor = { STOPS, LADDER, parseHex, normHex, hexToOklch, oklchToHex, scale, contrast, gray, hueDiff, hexToHsl, name };
 })();

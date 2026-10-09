@@ -170,5 +170,36 @@
     return { status: products.some((p) => p.source === "live") ? "ok" : error || "empty", products };
   }
 
-  window.PDRefs = { load, readPalette, summarize };
+  // What a palette does, in words: base, supporting colors, the loud one.
+  function describe(palette) {
+    const pal = palette.filter((c) => c.share >= 0.5).slice().sort((a, b) => b.share - a.share);
+    if (!pal.length) return "";
+    const amount = (x) => (x >= 60 ? "mostly" : x >= 30 ? "a large share of" : x >= 12 ? "a good portion of" : x >= 4 ? "some" : "a touch of");
+    const total = pal.reduce((a, c) => a + c.share, 0);
+    const dark = pal.reduce((a, c) => a + c.L * c.share, 0) / total < 0.5;
+    // Merge colors with the same name so the sentence doesn't repeat itself.
+    const named = [];
+    pal.forEach((c) => {
+      const n = C.name(c.hex);
+      const hit = named.find((x) => x.n === n);
+      if (hit) hit.share += c.share; else named.push({ n, share: c.share, C: c.C, hex: c.hex });
+    });
+    named.sort((a, b) => b.share - a.share);
+    const rest = named.slice(1, 4).map((x) => amount(x.share) + " " + x.n);
+    // The loud color is a real hue, not a gray or a tinted black.
+    const GRAYS = /white|gray|black/;
+    const big = named.filter((x) => x.share >= 1 && !GRAYS.test(x.n));
+    const loud = (big.length ? big : named.filter((x) => !GRAYS.test(x.n))).slice().sort((a, b) => b.C - a.C)[0];
+    let s = (dark ? "A dark screen: " : "A light screen: ") + "mostly " + named[0].n + (rest.length ? ", with " + rest.join(", ").replace(/, ([^,]*)$/, " and $1") : "") + ".";
+    if (loud && loud.C >= 0.06 && loud !== named[0]) {
+      s += " The loudest color is " + loud.n + (loud.share < 5 ? ", kept small." : loud.share < 15 ? ", used in a few places." : ", used generously.");
+    } else if (loud && loud.C >= 0.06) {
+      s += " The main color is also the loudest.";
+    } else {
+      s += " Almost no saturated color at all.";
+    }
+    return s;
+  }
+
+  window.PDRefs = { load, readPalette, summarize, describe };
 })();

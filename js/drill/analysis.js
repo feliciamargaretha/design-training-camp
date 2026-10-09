@@ -24,7 +24,9 @@
     refs.forEach((p) => {
       if (!p.found) { lines.push("- " + p.name + (p.role === "product" ? " (the product this brief is written from)" : "") + ": no screen available."); return; }
       const s = p.summary;
-      lines.push("- " + p.name + (p.role === "product" ? " (the product this brief is written from)" : "") + ": lightness range L " + s.lightMin + " to " + s.lightMax +
+      lines.push("- " + p.name + " in words: " + window.PDRefs.describe(p.palette) + " Colors by name, largest first: " +
+        p.palette.slice(0, 6).map((c) => window.PDColor.name(c.hex)).join(", ") + ".");
+      lines.push("  " + p.name + (p.role === "product" ? " (the product this brief is written from)" : "") + ": lightness range L " + s.lightMin + " to " + s.lightMax +
         (s.owner ? "; most saturated " + s.owner.hex + " (C " + s.owner.C + ", H " + s.owner.H + ") covering " + s.owner.share : "") +
         "; colors: " + s.colors.map((c) => c.hex + " L " + c.L + " C " + c.C + " " + c.share).join(", "));
     });
@@ -41,7 +43,7 @@
       data,
       "",
       "Write five parts, short and specific, plain words:",
-      "1. real: for each real product with a screen, one line on its lightness range, which color owns saturation, and that color's share. Then 'shared': what they have in common; 'split': where they differ. If a product has no screen, line: \"No screen to measure.\"",
+      "1. real: for each real product with a screen, one plain-language line on what it did with color, the way a designer would say it out loud: is it light or dark, what is the base, what carries the brand, how much the loud color is used and where it probably sits (buttons, highlights, illustrations). Use color names (\"deep forest green\", \"bright lime\"), NOT numbers, L/C/H values or hex codes. Then 'shared': what they have in common; 'split': where they differ, also in plain words. If a product has no screen, line: \"No screen to measure.\"",
       "2. right: up to 3 things the learner got right, each tied to one measured value from the table or checks.",
       "3. harmony: verdict \"harmonious\" or \"not yet\" with one line why. If not yet, name the ONE color to change in 'color' and in 'change' the dimension (lightness, chroma or hue) and direction (up/down, warmer/cooler), no new numbers.",
       "4. feel: one line per feel word saying whether the palette held or broke it, judged against the learner's own explanation where it covers that word.",

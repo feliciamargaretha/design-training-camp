@@ -631,13 +631,12 @@
     if (!p.found) return h("div", { class: "pd-ref is-missing" },
       h("p", { class: "pd-ref__name" }, p.name, p.role === "product" ? h("span", { class: "pd-ref__tag", text: "The brief" }) : null),
       h("p", { class: "hint", text: "No screen found to measure." }));
-    const s = p.summary;
     return h("div", { class: "pd-ref" },
       p.thumb ? h("a", { class: "pd-ref__img", href: p.url, target: "_blank", rel: "noopener" }, h("img", { src: p.thumb, alt: p.name + " screen" }))
         : h("p", { class: "pd-ref__stored" }, "Palette measured from a Mobbin screen when this brief was written. ", p.url ? h("a", { href: p.url, target: "_blank", rel: "noopener", text: "See the screen on Mobbin" }) : null),
       h("p", { class: "pd-ref__name" }, p.name, p.role === "product" ? h("span", { class: "pd-ref__tag", text: "The brief" }) : null),
       h("div", { class: "pd-sharebar", title: "Color share" }, p.palette.map((c) => h("span", { style: "background:" + c.hex + ";flex:" + c.share, title: c.hex + " · " + c.share.toFixed(1) + "%" }))),
-      h("p", { class: "pd-ref__meta", text: "Lightness " + s.lightMin + "–" + s.lightMax + (s.owner ? " · most saturated " + s.owner.hex + " at " + s.owner.share : "") }));
+      h("p", { class: "pd-ref__meta", text: window.PDRefs.describe(p.palette) }));
   }
 
   function drawAnalysis(an, v, vi) {
@@ -696,8 +695,7 @@
   // Part 1 straight from the measurements, for any product Claude's answer
   // didn't cover.
   function measuredLine(p) {
-    const s = p.summary;
-    return "lightness runs from L " + s.lightMin + " to " + s.lightMax + (s.owner ? "; the most saturated color, " + s.owner.hex + ", covers " + s.owner.share + " of the screen." : ".");
+    return window.PDRefs.describe(p.palette);
   }
 
   async function runAnalysis(vi, retry) {
