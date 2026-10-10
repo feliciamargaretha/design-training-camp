@@ -233,7 +233,7 @@
 
   // ---------- 2. Feel words ----------
   function viewFeel() {
-    const ro = state.versions.length > 0;
+    const ro = false;
     const examples = ["Defiant", "Plain-spoken", "Calm"];
     return h("div", { class: "pd-panel" },
       head("02", "Three feel words", "about 3 minutes", "Any three words for how the screen should feel. Then explain, in your own words, how they'll show up in your colors."),
@@ -242,9 +242,24 @@
           h("input", { type: "text", value: w, placeholder: examples[i], maxlength: 24, disabled: ro, oninput: (e) => { state.feel[i] = e.target.value; save(); } })))),
       h("label", { class: "pd-field pd-why" }, h("span", { text: "Your color decisions" }),
         h("textarea", { rows: 5, maxlength: 800, disabled: ro, placeholder: "e.g. Defiant: one loud green that nothing else competes with. Calm: lots of white space and greys that barely shift.", oninput: (e) => { state.why = e.target.value; save(); } }, state.why || "")),
-      ro ? h("p", { class: "hint", text: "Locked with version 1." }) : null,
       h("div", { class: "pd-actions" },
         h("button", { type: "button", class: "btn", text: "Build your palette →", onclick: () => go("colors") })));
+  }
+
+  // A locked version stays as it is; changing colors starts the next version
+  // from it, one click away from wherever you are.
+  function startRevision(step) {
+    state.draft = JSON.parse(JSON.stringify(state.versions[state.versions.length - 1].draft));
+    state.editing = true;
+    go(step);
+  }
+  function versionBar(step) {
+    if (!state.versions.length) return null;
+    const n = state.versions.length;
+    if (state.editing) return h("div", { class: "pd-versionbar" }, h("p", { text: "You're working on version " + (n + 1) + ". Version " + n + " stays saved as it was." }));
+    return h("div", { class: "pd-versionbar" },
+      h("p", { text: "Version " + n + " is locked, so this shows it as it was." }),
+      h("button", { type: "button", class: "btn btn--sm", text: "Change colors (makes version " + (n + 1) + ")", onclick: () => startRevision(step) }));
   }
 
   // ---------- 3. Palette ----------
@@ -252,7 +267,8 @@
     const d = state.draft;
     const ro = !state.editing;
     const wrap = h("div", { class: "pd-panel" },
-      head("03", "Build your palette", "about 5 minutes", "Pick 3–5 colors. Each gets a 10-stop scale on the same lightness ladder, with your exact hex at its nearest stop. Tag what each one is for whenever you're ready."));
+      head("03", "Build your palette", "about 5 minutes", "Pick 3–5 colors. Each gets a 10-stop scale on the same lightness ladder, with your exact hex at its nearest stop. Tag what each one is for whenever you're ready."),
+      versionBar("colors"));
     const list = h("div", { class: "pd-bases" });
     const foot = h("div", { class: "pd-palette-foot" });
     const refresh = () => { list.replaceChildren(...d.colors.map(colorRow)); drawFoot(); save(); };
@@ -309,7 +325,6 @@
         if (!ro && d.colors.filter((c) => c.hex).length < MIN) { note.textContent = "Pick at least 3 colors first."; return; }
         go("screen");
       } }), note));
-    if (ro) wrap.append(h("p", { class: "hint", text: "This version is locked. Revise it from the reveal to make version " + (state.versions.length + 1) + "." }));
     return wrap;
   }
 
@@ -370,6 +385,7 @@
     const panel = h("div", { class: "pd-palette" });
     const wrap = h("div", { class: "pd-panel" },
       head("04", "Color the screen", "about 10 minutes", "Click any element, then pick a stop. Elements with the same role change together; tick “Only this one” to split one off."),
+      versionBar("screen"),
       h("div", { class: "pd-work" }, h("div", { class: "pd-work__screen" }, stage(root, t, 760)), panel));
 
     let roles = new Map();
@@ -590,11 +606,7 @@
 
     // Revise
     wrap.append(h("div", { class: "pd-actions" },
-      h("button", { type: "button", class: "btn btn--ghost", text: "Revise as version " + (state.versions.length + 1), onclick: () => {
-        state.draft = JSON.parse(JSON.stringify(state.versions[state.versions.length - 1].draft));
-        state.editing = true;
-        go("screen");
-      } }),
+      h("button", { type: "button", class: "btn btn--ghost", text: "Change colors (makes version " + (state.versions.length + 1) + ")", onclick: () => startRevision("colors") }),
       h("span", { class: "hint", text: "Version " + v.n + " stays as it is. The revision saves beside it." })));
     wrap.append(h("p", { class: "pd-note", text: "Reference palettes come from screenshot pixels, so they include photos and illustrations, and their hex values are approximate. What each reference color is used for isn't known." }));
     return wrap;
