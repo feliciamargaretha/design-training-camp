@@ -347,9 +347,15 @@
       if (!ref) lines.push(["", "Tag your button color as Primary to compare against it."]);
       else if (!me) lines.push(["", "Pick a color and watch these lines change."]);
       else {
+        // Judged on how light and vivid the colors look; the advice is in HSL,
+        // the values design tools show.
         const dL = me.L - refO.L, dC = me.C - refO.C;
-        const weight = Math.abs(dL) <= 0.06 && Math.abs(dC) <= 0.04 ? ["ok", "Same weight as " + refName]
-          : ["no", (Math.abs(dL) > 0.06 ? (dL > 0 ? "Lighter" : "Darker") : (dC > 0 ? "More vivid" : "Softer")) + " than " + refName + ", so it won't feel like part of the same set"];
+        const hsl = C.hexToHsl(c.hex);
+        let weight;
+        if (Math.abs(dL) <= 0.06 && Math.abs(dC) <= 0.04) weight = ["ok", "Same weight as " + refName];
+        else if (Math.abs(dL) > 0.06) weight = ["no", (dL > 0 ? "Lighter" : "Darker") + " than " + refName + ", so it won't feel like part of the same set. " + (dL > 0 ? "Lower its L." : "Raise its L.")];
+        else if (dC > 0) weight = ["no", "More vivid than " + refName + ", so it pulls more attention. Lower its S."];
+        else weight = ["no", "Softer than " + refName + ", so it looks washed out next to it. " + (hsl.s >= 95 ? "S is already at the top, so try a slightly different L instead." : "Raise its S.")];
         lines.push(weight);
         if (me.C < 0.03) lines.push(["no", "Almost gray, so it won't read as a status at all"]);
         else if (refO.C >= 0.04) {
@@ -360,13 +366,20 @@
         if (others.length) lines.push(near ? ["no", "Too close to your other status color, so the two states blur together"] : ["ok", "Clearly different from your other status colors"]);
       }
 
+      const hslRow = (label, hex) => {
+        const v = hex && C.hexToHsl(hex);
+        return h("div", { class: "pd-status__hsl" }, h("span", { class: "pd-status__chip", style: hex ? "background:" + hex : "" }), h("span", { class: "pd-status__who", text: label }),
+          v ? [["H", v.h + "°"], ["S", v.s + "%"], ["L", v.l + "%"]].map(([k, x]) => h("span", { class: "pd-hsl__v" }, h("b", { text: k }), " " + x)) : h("span", { class: "hint", text: "—" }));
+      };
       el.replaceChildren(
         h("div", { class: "pd-ring" }, ring, h("span", { class: "pd-ring__hole" }), ...marks, ...dots),
         h("div", { class: "pd-status__text" },
           h("p", { class: "pd-status__rule", text: "Status colors work as a set: about the same weight as your main color, with hues clearly away from it." }),
+          ref ? h("div", { class: "pd-status__compare" }, hslRow(refName.replace(/^your /, "Your "), ref.hex), hslRow("This status color", c.hex)) : null,
           h("ul", { class: "pd-status__lines" }, lines.map(([k, t]) => h("li", { class: k ? "is-" + k : "", text: t }))),
           h("details", { class: "pd-status__why" }, h("summary", { text: "Show me why" }),
-            h("p", { text: "Same weight: if a green \u201csuccess\u201d is louder than your main button, it steals the focus; if it's paler, it looks washed out next to it. Matching how light and how vivid they are makes them feel like one family." }),
+            h("p", { text: "Weight is how strongly a color pulls the eye: how light or dark it looks, and how vivid it is. Hue doesn't count. If a green \u201csuccess\u201d is heavier than your main button, it steals the focus; if it's lighter, it looks washed out next to it. Matching weight makes them feel like one family." }),
+            h("p", { text: "Careful with HSL's L: it isn't how light a color looks. At the same L, yellows and greens look much lighter than blues and purples, so a green usually needs a lower L than your blue to look equally dark. Don't match the numbers; follow the lines above, or squint (or view in grayscale): same-weight colors turn into about the same gray." }),
             h("p", { text: "Hue away from your main color: the dark part of the ring is too close to " + refName + ". A status color in there can be mistaken for a button or a link." }),
             h("p", { text: "Keep the usual meanings (green, amber, red) so people read them instantly, but lean them toward your palette's temperature: with a cool main color, a slightly cool green and a red that leans toward crimson sit better than warm, orange-ish ones." }),
             h("p", { text: "Amber is the exception: it has to be lighter than the others or it turns brown, so let it break the weight rule a little." }))));
@@ -381,7 +394,7 @@
       return sc.stops.map((st) => h("div", { class: "pd-swatch" + (st.base ? " is-base" : ""), title: st.hex + " · " + (() => { const v = C.hexToHsl(st.hex); return "HSL " + v.h + "° " + v.s + "% " + v.l + "%"; })() },
         h("span", { class: "pd-swatch__chip", style: "background:" + st.hex }),
         h("span", { class: "pd-swatch__stop", text: String(st.stop) }),
-        st.base ? h("span", { class: "pd-swatch__base", text: "yours " + (st.offset >= 0 ? "+" : "−") + Math.abs(st.offset).toFixed(2) + " L" }) : null));
+        st.base ? h("span", { class: "pd-swatch__base", text: "yours" }) : null));
     }
     wrap.append(list, foot);
     refresh();
