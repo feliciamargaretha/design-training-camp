@@ -463,7 +463,7 @@
     applyColors(root, d, scales);
     const panel = h("div", { class: "pd-palette" });
     const wrap = h("div", { class: "pd-panel" },
-      head("04", "Color the screen", "about 10 minutes", "Click any element, then pick a stop. Elements with the same role change together; tick “Only this one” to split one off."),
+      head("04", "Color the screen", "about 10 minutes", "Click any element, then pick a stop. It changes just that element; tick “Change all … together” to color every element of that kind at once."),
       versionBar("screen"),
       h("div", { class: "pd-work" }, h("div", { class: "pd-work__screen" }, stage(root, t, 760)), panel));
 
@@ -483,8 +483,9 @@
       if (ro || !selected) return;
       if (selected.only) d.split[selected.el] = v;
       else {
+        // "All together": every element of this kind takes the stop.
         d.assign[selected.role] = v;
-        // Re-joining: split elements keep their own stop until un-split.
+        (roles.get(selected.role) || []).forEach((el) => { delete d.split[el.dataset.el]; });
       }
       save();
       draw();
@@ -496,17 +497,17 @@
       const kids = [];
       if (selected) {
         const els = roles.get(selected.role) || [];
-        const current = selected.only ? d.split[selected.el] : d.assign[selected.role];
+        const elNode = root.querySelector('[data-el="' + selected.el + '"]') || root;
+        const current = selected.only ? valueFor(d, elNode) : d.assign[selected.role];
+        const parent = elNode !== root ? elNode.parentElement.closest("[data-r]") : null;
         kids.push(h("div", { class: "pd-sel-card" },
           h("p", { class: "pd-sel-card__role", text: TPL.roleLabel(selected.role, brief) }),
-          h("p", { class: "pd-sel-card__meta", text: (selected.only ? "This element only" : els.length + (els.length === 1 ? " element" : " elements")) + " · " + (resolve(d, current, scales) ? resolve(d, current, scales).label : "not colored yet") }),
-          els.length > 1 || selected.only ? h("label", { class: "pd-toggle" },
-            h("input", { type: "checkbox", checked: !!selected.only, disabled: ro, onchange: (e) => {
-              selected.only = e.target.checked;
-              if (!e.target.checked) delete d.split[selected.el];
-              else if (!d.split[selected.el] && d.assign[selected.role]) d.split[selected.el] = d.assign[selected.role];
-              save(); draw();
-            } }), h("span", { text: "Only this one" })) : null));
+          h("p", { class: "pd-sel-card__meta", text: (selected.only ? "This one only" : "All " + els.length + " together") + " · " + (resolve(d, current, scales) ? resolve(d, current, scales).label : "not colored yet") }),
+          els.length > 1 ? h("label", { class: "pd-toggle" },
+            h("input", { type: "checkbox", checked: !selected.only, disabled: ro, onchange: (e) => { selected.only = !e.target.checked; draw(); } }),
+            h("span", { text: "Change all " + els.length + " " + TPL.roleLabel(selected.role, brief).toLowerCase() + " together" })) : null,
+          parent ? h("button", { type: "button", class: "text-btn pd-sel-card__up", text: "↑ Select what it sits in (" + TPL.roleLabel(parent.dataset.r, brief).toLowerCase() + ")",
+            onclick: () => { selected = { role: parent.dataset.r, el: parent.dataset.el || "root", only: true }; draw(); } }) : null));
       } else {
         kids.push(h("p", { class: "pd-sel-card pd-sel-card--empty", text: "Click an element on the screen to color it." }));
       }
@@ -515,18 +516,20 @@
           h("span", { class: "pd-grid__label", text: s.label }),
           h("div", { class: "pd-grid__stops" }, s.scale.stops.map((st, i) => {
             const v = s.id + ":" + i;
-            const cur = selected && (selected.only ? d.split[selected.el] : d.assign[selected.role]) === v;
+            const cur = selected && (selected.only ? valueFor(d, root.querySelector('[data-el="' + selected.el + '"]') || root) : d.assign[selected.role]) === v;
             return h("button", { type: "button", class: "pd-chip" + (cur ? " is-on" : "") + (st.base ? " is-base" : ""), style: "background:" + st.hex,
               title: s.label + " " + st.stop + " · " + st.hex, "aria-label": s.label + " " + st.stop, disabled: ro || !selected, onclick: () => setValue(v) });
           }))))));
       kids.push(h("div", { class: "pd-roles" },
         h("p", { class: "pd-sub", text: "Roles · " + done + " of " + total.length + " colored" }),
         h("ul", {}, total.map((r) => {
-          const c = resolve(d, d.assign[r], scales);
+          const vals = [...new Set((roles.get(r) || []).map((el) => valueFor(d, el) || ""))];
+          const mixed = vals.length > 1;
+          const c = resolve(d, mixed ? vals.find(Boolean) : vals[0], scales);
           return h("li", {}, h("button", { type: "button", class: "pd-role" + (selected && selected.role === r ? " is-on" : ""), onclick: () => { selected = { role: r, el: roles.get(r)[0].dataset.el || "root", only: false }; draw(); } },
             h("span", { class: "pd-role__chip" + (c ? "" : " is-empty"), style: c ? "background:" + c.hex : "" }),
             h("span", { class: "pd-role__label", text: TPL.roleLabel(r, brief) }),
-            h("span", { class: "pd-role__stop", text: c ? c.label : "—" })));
+            h("span", { class: "pd-role__stop", text: mixed ? "Mixed" : c ? c.label : "—" })));
         }))));
       if (!ro) {
         kids.push(h("div", { class: "pd-actions pd-actions--stack" },
@@ -545,8 +548,8 @@
     root.addEventListener("click", (e) => {
       const el = e.target.closest("[data-r]");
       if (!el || !root.contains(el) && el !== root) return;
-      const only = !!d.split[el.dataset.el];
-      selected = { role: el.dataset.r, el: el.dataset.el || "root", only };
+      // A click picks just that element; the panel can widen it to all of its kind.
+      selected = { role: el.dataset.r, el: el.dataset.el || "root", only: true };
       draw();
     });
     root.dataset.el = "root";

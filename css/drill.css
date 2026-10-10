@@ -300,3 +300,7 @@ body[data-section="drill"] .day-banner { display: none; }
 .pd-status__hsl { display: flex; align-items: center; gap: 10px; font-size: 13px; font-variant-numeric: tabular-nums; flex-wrap: wrap; }
 .pd-status__chip { width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); background: repeating-linear-gradient(45deg, #fff 0 3px, var(--line) 3px 6px); }
 .pd-status__who { min-width: 150px; color: var(--ink-soft); }
+/* Thin lines are hard to click: give empty dividers a taller hit area. */
+.pd-stage__inner .pd-k-line:empty:not([style*="position:absolute"]) { position: relative; }
+.pd-stage__inner .pd-k-line:empty::after { content: ""; position: absolute; left: 0; right: 0; top: -6px; bottom: -6px; }
+.pd-sel-card__up { margin-top: 6px; padding-left: 0; }

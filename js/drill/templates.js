@@ -297,6 +297,8 @@
         el.dataset.r = r;
       }
       el.dataset.el = "e" + i;
+      const kind = (ROLES[el.dataset.r] || {}).kind;
+      if (kind) el.classList.add("pd-k-" + kind);
     });
     return root;
   }
