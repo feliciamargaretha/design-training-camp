@@ -157,5 +157,9 @@
     return tone + hue;
   }
 
-  window.PDColor = { STOPS, LADDER, parseHex, normHex, hexToOklch, oklchToHex, scale, contrast, gray, hueDiff, hexToHsl, name };
+  // Ambers, golds and yellow-oranges: they only stay amber when light and
+  // vivid; darker or duller, they turn brown or olive.
+  const isAmber = (o) => o && o.C >= 0.06 && o.H >= 50 && o.H <= 105;
+
+  window.PDColor = { STOPS, LADDER, parseHex, normHex, hexToOklch, oklchToHex, scale, contrast, gray, hueDiff, hexToHsl, name, isAmber };
 })();

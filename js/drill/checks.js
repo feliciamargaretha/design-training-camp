@@ -176,7 +176,9 @@
     const muddy = [], pairs = [], muddyWords = [];
     for (let i = 0; i < chroma.length; i++) for (let j = i + 1; j < chroma.length; j++) {
       const a = chroma[i], b = chroma[j];
-      const dL = Math.abs(a.L - b.L), dC = Math.abs(a.C - b.C);
+      // Amber's lightness and vividness are its own, so only its hue is compared.
+      const amber = C.isAmber(a) || C.isAmber(b);
+      const dL = amber ? 0 : Math.abs(a.L - b.L), dC = amber ? 0 : Math.abs(a.C - b.C);
       const hue = a.C >= T.hueMinC && b.C >= T.hueMinC;
       const dH = hue ? C.hueDiff(a.H, b.H) : null;
       const cls = (v, s, d) => (v <= s + 1e-9 ? "same" : v >= d - 1e-9 ? "different" : "in between");
@@ -197,12 +199,14 @@
       const bad = [];
       let maxL = 0, minH = 360;
       for (let i = 0; i < statuses.length; i++) for (let j = i + 1; j < statuses.length; j++) {
-        const dL = Math.abs(statuses[i].L - statuses[j].L), dH = C.hueDiff(statuses[i].H, statuses[j].H);
+        // Amber is allowed to sit lighter than the other status colors.
+        const amber = C.isAmber(statuses[i]) || C.isAmber(statuses[j]);
+        const dL = amber ? 0 : Math.abs(statuses[i].L - statuses[j].L), dH = C.hueDiff(statuses[i].H, statuses[j].H);
         maxL = Math.max(maxL, dL); minH = Math.min(minH, dH);
         if (dL > T.statusL + 1e-9 || dH < T.statusH - 1e-9) bad.push(statuses[i].label + " / " + statuses[j].label);
       }
       checks.push({
-        id: "status", name: "Status tier", rule: "Status colors sit within 0.06 lightness of each other and at least 40° of hue apart.",
+        id: "status", name: "Status tier", rule: "Status colors sit within 0.06 lightness of each other (amber may be lighter) and at least 40° of hue apart.",
         result: verdict(!bad.length), value: "ΔL " + f.d(maxL) + " · ΔH " + f.H(minH),
         detail: "Lightness apart " + f.d(maxL) + ", hue apart " + f.H(minH) + ".",
         meaning: !bad.length ? "Your status colors feel like one set: the same weight, with hues far enough apart to tell them apart."
@@ -223,5 +227,5 @@
   }
 
   // Bumped when the checks change, so locked drills are checked again.
-  window.PDChecks = { measure, run, fmt: f, T, VERSION: 2 };
+  window.PDChecks = { measure, run, fmt: f, T, VERSION: 3 };
 })();

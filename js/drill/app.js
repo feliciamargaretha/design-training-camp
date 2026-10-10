@@ -360,7 +360,13 @@
         const dL = me.L - refO.L, dC = me.C - refO.C;
         const hsl = C.hexToHsl(c.hex);
         let weight;
-        if (Math.abs(dL) <= 0.06 && Math.abs(dC) <= 0.04) weight = ["ok", "Same weight as " + refName];
+        if (C.isAmber(me)) {
+          // Amber is the exception: it has to sit lighter and stay vivid.
+          if (dL < -0.02) weight = ["no", "Darker than " + refName + ", and darker amber turns brown. Raise its L."];
+          else if (dL > 0.24) weight = ["no", "So light it may disappear on white. Lower its L a little, or use it as a fill with dark text."];
+          else if (dC < -0.02 || me.C < 0.12) weight = ["no", "Duller amber turns muddy or brown. " + (hsl.s >= 95 ? "Raise its L a little instead." : "Raise its S.")];
+          else weight = ["ok", "Light and vivid enough to stay amber (amber is allowed to sit lighter than " + refName + ")"];
+        } else if (Math.abs(dL) <= 0.06 && Math.abs(dC) <= 0.04) weight = ["ok", "Same weight as " + refName];
         else if (Math.abs(dL) > 0.06) weight = ["no", (dL > 0 ? "Lighter" : "Darker") + " than " + refName + ", so it won't feel like part of the same set. " + (dL > 0 ? "Lower its L." : "Raise its L.")];
         else if (dC > 0) weight = ["no", "More vivid than " + refName + ", so it pulls more attention. Lower its S."];
         else weight = ["no", "Softer than " + refName + ", so it looks washed out next to it. " + (hsl.s >= 95 ? "S is already at the top, so try a slightly different L instead." : "Raise its S.")];
