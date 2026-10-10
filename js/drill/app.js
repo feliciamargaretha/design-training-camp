@@ -578,7 +578,7 @@
     const bases = baseInfo(d);
     const checks = window.PDChecks.run(m, bases, (r) => TPL.roleLabel(r, brief));
     const colors = m.colors.map((c) => ({ key: c.key, label: c.label, hex: c.hex, scaleId: c.scaleId, stop: c.stop, base: c.base, kind: c.kind, L: c.L, C: c.C, H: c.H, share: c.share, fmt: c.fmt, roles: [...(roleNames[c.key] || [])] }));
-    return { bases, colors, checks };
+    return { bases, colors, checks, checksV: window.PDChecks.VERSION };
   }
 
   // ---------- 5. Reveal ----------
@@ -647,8 +647,8 @@
       h("p", { class: "pd-sec__lede", text: "Your palette next to theirs. Each bar shows how much of the screen each color covers; the ringed swatch is the loudest color." }),
       compare, an));
     drawAnalysis(an, v, vi);
-    // Versions locked before the checks explained themselves: measure again.
-    if (!v.checks.some((c) => c.meaning)) {
+    // Versions locked under older checks: measure again.
+    if (v.checksV !== window.PDChecks.VERSION) {
       requestAnimationFrame(() => {
         if (!root.isConnected) return;
         Object.assign(v, measureScreen(root, v.draft, scalesFor(v.draft)));

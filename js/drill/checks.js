@@ -8,7 +8,9 @@
   // Thresholds. Contrast is WCAG 2 AA; the rest are starting values.
   const T = {
     text: 4.5, control: 3, surfaceMin: 0.02, surfaceMax: 0.10, lead: 0.04, accentShare: 10,
-    sameL: 0.04, diffL: 0.15, sameC: 0.02, diffC: 0.08, sameH: 10, diffH: 40, hueMinC: 0.04,
+    // "Same" means close enough to read as a match, the same margin the
+    // status helper uses for "same weight".
+    sameL: 0.06, diffL: 0.15, sameC: 0.04, diffC: 0.08, sameH: 10, diffH: 40, hueMinC: 0.04,
     statusL: 0.06, statusH: 40, restraint: 12,
   };
   const INK = { text: 0.3, icon: 0.25 };
@@ -180,14 +182,14 @@
       const cls = (v, s, d) => (v <= s + 1e-9 ? "same" : v >= d - 1e-9 ? "different" : "in between");
       const r = { an: nm(a.hex), bn: nm(b.hex), a: a.label, b: b.label, L: cls(dL, T.sameL, T.diffL), C: cls(dC, T.sameC, T.diffC), H: hue ? cls(dH, T.sameH, T.diffH) : "skipped", dL: f.d(dL), dC: f.dC(dC), dH: hue ? f.H(dH) : "—" };
       pairs.push(r);
-      ["L", "C", "H"].forEach((dim) => { if (r[dim] === "in between") { muddy.push(r.a + " / " + r.b + " " + dim + " " + (dim === "L" ? r.dL : dim === "C" ? r.dC : r.dH)); muddyWords.push(r.a + " (" + r.an + ") and " + r.b + " (" + r.bn + ") are close in " + ({ L: "lightness", C: "saturation", H: "hue" })[dim] + " but not the same"); } });
+      ["L", "C", "H"].forEach((dim) => { if (r[dim] === "in between") { muddy.push(r.a + " / " + r.b + " " + dim + " " + (dim === "L" ? r.dL : dim === "C" ? r.dC : r.dH)); muddyWords.push(r.a + " (" + r.an + ") and " + r.b + " (" + r.bn + ") are neither a match nor clearly different in " + ({ L: "lightness", C: "saturation", H: "hue" })[dim]); } });
     }
     if (pairs.length) checks.push({
-      id: "same", name: "Same or decisively different", rule: "For each pair of non-neutral base colors, lightness, chroma and hue are either the same or clearly different.",
+      id: "same", name: "Same or decisively different", rule: "For each pair of non-neutral base colors, lightness, saturation and hue are either close enough to read as a match or clearly different.",
       result: verdict(!muddy.length), value: muddy.length ? muddy.length + " in between" : "all decisive", pairs,
       detail: muddy.length ? "In between: " + muddy.join("; ") + "." : "Every pair is decisively same or different on each dimension.",
-      meaning: muddy.length ? muddyWords.join("; ") + ". Near-misses like this read as accidents rather than choices; make them match or push them clearly apart."
-        : "Your colors are either clearly related or clearly different, so the palette looks intentional.",
+      meaning: muddy.length ? muddyWords.join("; ") + ". That in-between zone reads as an accident rather than a choice: bring them close enough to match (they don't have to be identical) or push them clearly apart."
+        : "Your colors either match closely enough or are clearly different, so the palette looks intentional.",
     });
 
     const statuses = bases.filter((b) => b.kind === "status");
@@ -220,5 +222,6 @@
     return checks;
   }
 
-  window.PDChecks = { measure, run, fmt: f, T };
+  // Bumped when the checks change, so locked drills are checked again.
+  window.PDChecks = { measure, run, fmt: f, T, VERSION: 2 };
 })();
