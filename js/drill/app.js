@@ -271,7 +271,7 @@
       versionBar("colors"));
     const list = h("div", { class: "pd-bases" });
     const foot = h("div", { class: "pd-palette-foot" });
-    const refresh = () => { list.replaceChildren(...d.colors.map(colorRow)); drawFoot(); save(); };
+    const refresh = () => { list.replaceChildren(...d.colors.map(colorRow)); drawHelpers(); drawFoot(); save(); };
 
     function drawFoot() {
       const n = d.colors.filter((c) => c.hex).length;
@@ -294,16 +294,82 @@
       const hexIn = h("input", { type: "text", class: "pd-hex", value: c.hex, placeholder: "#000000", maxlength: 7, disabled: ro, "aria-label": "Color " + (i + 1) + " hex",
         onchange: (e) => { const v = C.normHex(e.target.value); if (v || !e.target.value) { c.hex = v || ""; refresh(); } else e.target.classList.add("is-bad"); } });
       const picker = h("input", { type: "color", class: "pd-picker", value: c.hex || "#888888", disabled: ro, "aria-label": "Pick color " + (i + 1),
-        oninput: (e) => { c.hex = e.target.value; hexIn.value = e.target.value; hslOut.replaceChildren(...hslText(c.hex)); strip.replaceChildren(...stripFor(C.scale(e.target.value))); },
+        oninput: (e) => { c.hex = e.target.value; hexIn.value = e.target.value; hslOut.replaceChildren(...hslText(c.hex)); strip.replaceChildren(...stripFor(C.scale(e.target.value))); drawHelpers(); },
         onchange: () => refresh() });
       const hslOut = h("span", { class: "pd-hsl", title: "Hue, saturation, lightness (HSL)" }, hslText(c.hex));
       const role = h("select", { class: "pd-select", disabled: ro, "aria-label": "What color " + (i + 1) + " is for", onchange: (e) => { c.role = e.target.value; refresh(); } },
         [["", "Not tagged"], ["neutral", "Neutral"], ["primary", "Primary"], ["accent", "Accent"], ["status", "Status"]].map(([v, t]) => h("option", { value: v, selected: c.role === v, text: t })));
-      return h("div", { class: "pd-base" },
+      const helper = c.role === "status" ? h("div", { class: "pd-status", "data-color": c.id }) : null;
+      return h("div", { class: "pd-base" + (helper ? " has-helper" : "") },
         h("div", { class: "pd-base__pick" }, picker, hexIn, hslOut),
         h("div", { class: "pd-base__tag" }, role,
           !ro ? h("button", { type: "button", class: "text-btn", text: "Remove", "aria-label": "Remove color " + (i + 1), onclick: () => { removeColor(c); refresh(); } }) : null),
-        strip);
+        strip, helper);
+    }
+
+    // ---------- Status helper ----------
+    // For colors tagged Status: the rule, a hue ring with your main color and
+    // the zone too close to it, and live feedback while you pick. It never
+    // picks for you.
+    const CONVENTIONS = [["red", 27], ["amber", 75], ["green", 148]];
+    function reference() {
+      const filled = d.colors.filter((x) => x.hex);
+      return filled.find((x) => x.role === "primary") || filled.find((x) => x.hex && x.role !== "neutral" && x.role !== "status" && C.hexToOklch(x.hex).C >= 0.04);
+    }
+    function drawHelpers() {
+      list.querySelectorAll(".pd-status").forEach((el) => {
+        const c = d.colors.find((x) => x.id === el.dataset.color);
+        if (c) drawHelper(el, c);
+      });
+    }
+    function drawHelper(el, c) {
+      const ref = reference();
+      const refO = ref && C.hexToOklch(ref.hex);
+      const me = c.hex && C.hexToOklch(c.hex);
+      const refName = ref ? "your " + C.name(ref.hex) : "your main color";
+      const others = d.colors.filter((x) => x !== c && x.role === "status" && x.hex);
+
+      // Ring: every hue at one middle weight, the zone near your main color dimmed.
+      const ringStops = [];
+      for (let a = 0; a <= 360; a += 15) ringStops.push(C.oklchToHex(0.68, 0.13, a) + " " + a + "deg");
+      const layers = ["conic-gradient(" + ringStops.join(", ") + ")"];
+      if (refO && refO.C >= 0.04) layers.unshift("conic-gradient(from " + (refO.H - 40) + "deg, rgba(20,20,20,.62) 0deg 80deg, transparent 80deg 360deg)");
+      const ring = h("div", { class: "pd-ring__wheel", style: "background:" + layers.join(", ") });
+      const pos = (deg, r) => { const t = (deg * Math.PI) / 180; return "left:" + (50 + r * Math.sin(t)) + "%;top:" + (50 - r * Math.cos(t)) + "%"; };
+      const marks = CONVENTIONS.map(([n, deg]) => h("span", { class: "pd-ring__label", style: pos(deg, 62), text: n }));
+      const dots = [];
+      if (refO && refO.C >= 0.04) dots.push(h("span", { class: "pd-ring__dot is-ref", style: pos(refO.H, 42) + ";background:" + ref.hex, title: refName }));
+      others.forEach((o) => { const oo = C.hexToOklch(o.hex); if (oo.C >= 0.03) dots.push(h("span", { class: "pd-ring__dot is-other", style: pos(oo.H, 42) + ";background:" + o.hex, title: "Another status color" })); });
+      if (me && me.C >= 0.03) dots.push(h("span", { class: "pd-ring__dot is-me", style: pos(me.H, 42) + ";background:" + c.hex, title: "This color" }));
+
+      // Live feedback, in words.
+      const lines = [];
+      if (!ref) lines.push(["", "Tag your button color as Primary to compare against it."]);
+      else if (!me) lines.push(["", "Pick a color and watch these lines change."]);
+      else {
+        const dL = me.L - refO.L, dC = me.C - refO.C;
+        const weight = Math.abs(dL) <= 0.06 && Math.abs(dC) <= 0.04 ? ["ok", "Same weight as " + refName]
+          : ["no", (Math.abs(dL) > 0.06 ? (dL > 0 ? "Lighter" : "Darker") : (dC > 0 ? "More vivid" : "Softer")) + " than " + refName + ", so it won't feel like part of the same set"];
+        lines.push(weight);
+        if (me.C < 0.03) lines.push(["no", "Almost gray, so it won't read as a status at all"]);
+        else if (refO.C >= 0.04) {
+          const far = C.hueDiff(me.H, refO.H) >= 40;
+          lines.push(far ? ["ok", "Far enough from " + refName] : ["no", "Too close to " + refName + " in hue, so it could be mistaken for a button"]);
+        }
+        const near = others.find((o) => { const oo = C.hexToOklch(o.hex); return oo.C >= 0.03 && me.C >= 0.03 && C.hueDiff(me.H, oo.H) < 40; });
+        if (others.length) lines.push(near ? ["no", "Too close to your other status color, so the two states blur together"] : ["ok", "Clearly different from your other status colors"]);
+      }
+
+      el.replaceChildren(
+        h("div", { class: "pd-ring" }, ring, h("span", { class: "pd-ring__hole" }), ...marks, ...dots),
+        h("div", { class: "pd-status__text" },
+          h("p", { class: "pd-status__rule", text: "Status colors work as a set: about the same weight as your main color, with hues clearly away from it." }),
+          h("ul", { class: "pd-status__lines" }, lines.map(([k, t]) => h("li", { class: k ? "is-" + k : "", text: t }))),
+          h("details", { class: "pd-status__why" }, h("summary", { text: "Show me why" }),
+            h("p", { text: "Same weight: if a green \u201csuccess\u201d is louder than your main button, it steals the focus; if it's paler, it looks washed out next to it. Matching how light and how vivid they are makes them feel like one family." }),
+            h("p", { text: "Hue away from your main color: the dark part of the ring is too close to " + refName + ". A status color in there can be mistaken for a button or a link." }),
+            h("p", { text: "Keep the usual meanings (green, amber, red) so people read them instantly, but lean them toward your palette's temperature: with a cool main color, a slightly cool green and a red that leans toward crimson sit better than warm, orange-ish ones." }),
+            h("p", { text: "Amber is the exception: it has to be lighter than the others or it turns brown, so let it break the weight rule a little." }))));
     }
     function hslText(hex) {
       const v = hex && C.hexToHsl(hex);

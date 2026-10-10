@@ -271,3 +271,28 @@ body[data-section="drill"] .day-banner { display: none; }
 @media (max-width: 640px) { .pdh-item { grid-template-columns: minmax(0, 1fr); } .pdh-item .btn { justify-self: start; } }
 .pd-versionbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: -8px 0 20px; padding: 10px 16px; border-radius: var(--radius-md); background: var(--lilac); }
 .pd-versionbar p { margin: 0; font-size: 14px; }
+
+/* Status helper: rule, hue ring, live feedback */
+.pd-status { grid-column: 1 / -1; display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 20px; align-items: center; border-top: 1px solid var(--line); padding-top: 16px; }
+.pd-ring { position: relative; width: 150px; height: 150px; margin: 20px; }
+.pd-ring__wheel { position: absolute; inset: 0; border-radius: 50%; }
+.pd-ring__hole { position: absolute; inset: 22px; border-radius: 50%; background: var(--frame); }
+.pd-ring__label { position: absolute; transform: translate(-50%, -50%); font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
+.pd-ring__dot { position: absolute; width: 18px; height: 18px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 2px #fff, 0 0 0 3px rgba(0,0,0,.25); }
+.pd-ring__dot.is-ref { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ink); }
+.pd-ring__dot.is-me { width: 24px; height: 24px; box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--ink); z-index: 1; }
+.pd-ring__dot.is-other { width: 14px; height: 14px; }
+.pd-status__rule { margin: 0 0 8px; font-weight: 500; }
+.pd-status__lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.pd-status__lines li::before { content: "•"; margin-right: 8px; color: var(--ink-mute); }
+.pd-status__lines li.is-ok::before { content: "✓"; color: #4d7a12; }
+.pd-status__lines li.is-ok { color: var(--ink); }
+.pd-status__lines li.is-no::before { content: "→"; color: #a3401c; }
+.pd-status__why { margin-top: 10px; font-size: 13px; color: var(--ink-soft); }
+.pd-status__why summary { cursor: pointer; font-weight: 500; color: var(--ink); }
+.pd-status__why p { margin: 6px 0 0; max-width: 64ch; }
+@media (max-width: 640px) { .pd-status { grid-template-columns: 1fr; justify-items: start; } }
+@media (max-width: 640px) {
+  .pd-base { grid-template-columns: minmax(0, 1fr); }
+  .pd-base .pd-scale, .pd-status { grid-column: 1; }
+}
