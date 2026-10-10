@@ -381,7 +381,7 @@
             h("p", { text: "Weight is how strongly a color pulls the eye: how light or dark it looks, and how vivid it is. Hue doesn't count. If a green \u201csuccess\u201d is heavier than your main button, it steals the focus; if it's lighter, it looks washed out next to it. Matching weight makes them feel like one family." }),
             h("p", { text: "Careful with HSL's L: it isn't how light a color looks. At the same L, yellows and greens look much lighter than blues and purples, so a green usually needs a lower L than your blue to look equally dark. Don't match the numbers; follow the lines above, or squint (or view in grayscale): same-weight colors turn into about the same gray." }),
             h("p", { text: "Hue away from your main color: the dark part of the ring is too close to " + refName + ". A status color in there can be mistaken for a button or a link." }),
-            h("p", { text: "Keep the usual meanings (green, amber, red) so people read them instantly, but lean them toward your palette's temperature: with a cool main color, a slightly cool green and a red that leans toward crimson sit better than warm, orange-ish ones." }),
+            h("p", { text: "Keep the usual meanings (green, amber, red) so people read them instantly, but lean each one away from your main color: with a cool blue, a green that leans toward yellow and a red that leans toward orange stay clearly separate, while a blue-ish green or a purple-ish red drifts toward the blue and blurs into it. With a warm main color, lean them the other way." }),
             h("p", { text: "Amber is the exception: it has to be lighter than the others or it turns brown, so let it break the weight rule a little." }))));
     }
     function hslText(hex) {
