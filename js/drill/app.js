@@ -41,7 +41,7 @@
     return {
       briefId: brief.id, started: null, step: "brief",
       feel: ["", "", ""], why: "",
-      draft: { colors: [newColor(), newColor(), newColor()], assign: {}, split: {} },
+      draft: { colors: [newColor(), newColor(), newColor()], assign: {}, split: {}, ladder2: true },
       editing: true, versions: [],
     };
   }
@@ -74,7 +74,15 @@
 
   // Drafts saved before the palette was free: { bases: {neutral, primary, …} }.
   function migrateDraft(d) {
-    if (!d || d.colors) return d;
+    if (!d) return d;
+    // Drafts from before stop 25 existed: every stop index moves up by one.
+    if (!d.ladder2) {
+      const up = (v) => { const [id, i] = String(v).split(":"); return id + ":" + (+i + 1); };
+      Object.keys(d.assign || {}).forEach((k) => { d.assign[k] = up(d.assign[k]); });
+      Object.keys(d.split || {}).forEach((k) => { d.split[k] = up(d.split[k]); });
+      d.ladder2 = true;
+    }
+    if (d.colors) return d;
     const roles = { neutral: "neutral", primary: "primary", accent: "accent", s1: "status", s2: "status" };
     d.colors = Object.keys(roles).filter((k) => d.bases && d.bases[k] && (k !== "accent" || d.useAccent !== false)).map((k) => ({ id: k, hex: d.bases[k], role: roles[k] }));
     delete d.bases; delete d.useAccent;
@@ -267,7 +275,7 @@
     const d = state.draft;
     const ro = !state.editing;
     const wrap = h("div", { class: "pd-panel" },
-      head("03", "Build your palette", "about 5 minutes", "Pick 3–5 colors. Each gets a 10-stop scale on the same lightness ladder, with your exact hex at its nearest stop. Tag what each one is for whenever you're ready."),
+      head("03", "Build your palette", "about 5 minutes", "Pick 3–5 colors. Each gets an 11-stop scale on the same lightness ladder, with your exact hex at its nearest stop. Tag what each one is for whenever you're ready."),
       versionBar("colors"));
     const list = h("div", { class: "pd-bases" });
     const foot = h("div", { class: "pd-palette-foot" });

@@ -1,10 +1,12 @@
-// Palette Drill: color maths. OKLCH conversions, the ten-stop scales and
+// Palette Drill: color maths. OKLCH conversions, the eleven-stop scales and
 // WCAG 2 contrast. Nothing here touches the page.
 (function () {
-  const STOPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
+  const STOPS = [25, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
   // One lightness ladder for every scale, so stop 500 of any scale has the
   // same lightness as stop 500 of any other.
-  const LADDER = [0.97, 0.93, 0.87, 0.78, 0.68, 0.58, 0.49, 0.40, 0.31, 0.22];
+  // The light end is finer (25 and 50), because backgrounds, cards and
+  // borders need several very light steps.
+  const LADDER = [0.985, 0.97, 0.93, 0.87, 0.78, 0.68, 0.58, 0.49, 0.40, 0.31, 0.22];
 
   const toLinear = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
   const toGamma = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
