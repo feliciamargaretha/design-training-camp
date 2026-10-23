@@ -91,3 +91,11 @@ hidden until the reveal. A skipped day is just skipped. No timer:
    when the library was written, in `js/drill/ref-palettes.js`), the measured table and eight checks (`js/drill/checks.js`),
    and Claude's analysis (`js/drill/analysis.js`). Every number Claude writes is checked
    against the data it was given: a line with an unknown number is asked for once more, then dropped.
+
+## Screen recordings
+
+Design and Redesign also accept a screen recording (MP4, MOV, WebM). `js/video-frames.js`
+plays it in the browser, waits for the picture to settle, and keeps a frame each time a
+settled picture differs clearly from the last one kept (by share of pixels whose color
+changed), up to 15 screens. Nothing leaves the page.
+

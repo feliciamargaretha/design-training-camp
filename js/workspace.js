@@ -66,7 +66,7 @@
       dropzone.hidden = has;
       list.hidden = !has;
       if (clearBtn) clearBtn.disabled = !has;
-      if (count) {
+      if (count && !busy) {
         count.textContent = has
           ? screens.length + (screens.length === 1 ? " screen" : " screens")
           : "No screens yet";
@@ -74,7 +74,9 @@
     }
 
     function addFiles(files) {
-      const images = [...files].filter((f) => f.type.startsWith("image/"));
+      const all = [...files];
+      all.filter((f) => f.type.startsWith("video/") || /\.(mp4|mov|webm|m4v)$/i.test(f.name || "")).forEach(addVideo);
+      const images = all.filter((f) => f.type.startsWith("image/"));
       if (!images.length) return;
       images.forEach((file, i) => {
         screens.push({
@@ -85,6 +87,33 @@
         });
       });
       changed();
+    }
+
+    // A screen recording becomes one screen per distinct moment in it.
+    let busy = 0;
+    async function addVideo(file) {
+      busy++;
+      const base = (file.name || "Recording").replace(/\.[^.]+$/, "");
+      const say = (t) => { if (count) count.textContent = t; };
+      say("Reading " + base + "…");
+      try {
+        const frames = await window.DTCVideo.extract(file, (f, n) =>
+          say("Reading " + base + "… " + Math.round(f * 100) + "% · " + n + (n === 1 ? " screen" : " screens") + " found"));
+        frames.forEach((fr, i) => screens.push({
+          id: Date.now() + "-v" + i + "-" + Math.random().toString(36).slice(2, 7),
+          name: base + " · " + fr.label + ".png",
+          blob: fr.blob,
+          url: URL.createObjectURL(fr.blob),
+        }));
+        busy--;
+        changed();
+        if (!frames.length) say("No clear screens found in " + base + ". Try a recording that pauses on each screen.");
+        else say(screens.length + (screens.length === 1 ? " screen" : " screens") + " · " + frames.length + " from " + base + ". Remove any you don't need.");
+      } catch (_) {
+        busy--;
+        render();
+        say("This browser can't play " + (file.name || "that video") + ". Try it in Chrome or Safari, or export it as MP4 (H.264) or WebM.");
+      }
     }
 
     function removeScreen(id) {

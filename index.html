@@ -123,7 +123,7 @@
       <div class="toolbar">
         <div class="toolbar__row">
           <div class="segmented" role="group" aria-label="Upload">
-            <button type="button" class="segmented__item is-active" data-el="add-images">Add images</button>
+            <button type="button" class="segmented__item is-active" data-el="add-images">Add images or video</button>
             <span class="segmented__note" data-el="count">No screens yet</span>
           </div>
           <div class="toolbar__actions">
@@ -153,11 +153,11 @@
             <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
           </span>
           <span class="dropzone__title">Drop your Figma exports here</span>
-          <span class="dropzone__hint">or click to browse. You can also paste a copied frame.<br>PNG or JPG, one or more screens.</span>
+          <span class="dropzone__hint">or click to browse. You can also paste a copied frame.<br>PNG or JPG, one or more screens, or a screen recording (MP4, MOV) to split into screens.</span>
         </button>
         <ul class="screens" data-el="screens" hidden></ul>
       </div>
-      <input type="file" data-el="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+      <input type="file" data-el="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/quicktime,video/webm,.mov,.mp4,.webm,.m4v" multiple hidden>
     </section>
   </main>
 
@@ -332,7 +332,7 @@
             </div>
             <div class="toolbar__actions">
               <span class="segmented__note" data-el="count">No screens yet</span>
-              <button type="button" class="text-btn" data-el="add-images">Add images</button>
+              <button type="button" class="text-btn" data-el="add-images">Add images or video</button>
               <button type="button" class="text-btn" data-el="clear" disabled>Clear</button>
               <button type="button" class="text-btn" data-el="remove">Remove</button>
             </div>
@@ -359,11 +359,11 @@
               <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M4 16v2.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V16"/></svg>
             </span>
             <span class="dropzone__title">Drop this exploration's screens</span>
-            <span class="dropzone__hint">or click to browse, or paste a copied frame.</span>
+            <span class="dropzone__hint">or click to browse, or paste a copied frame. A screen recording works too.</span>
           </button>
           <ul class="screens" data-el="screens" hidden></ul>
         </div>
-        <input type="file" data-el="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+        <input type="file" data-el="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/quicktime,video/webm,.mov,.mp4,.webm,.m4v" multiple hidden>
       </article>
     </template>
   </main>
@@ -563,6 +563,7 @@
   <script src="js/screen-reader.js"></script>
   <script src="js/day.js"></script>
   <script src="js/landing.js"></script>
+  <script src="js/video-frames.js"></script>
   <script src="js/workspace.js"></script>
   <script src="js/design.js"></script>
   <script src="js/study.js"></script>
