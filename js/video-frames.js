@@ -93,14 +93,16 @@
       const found = [];
       let prev = null, kept = null;
       const end = Math.max(0, video.duration - 0.05);
-      for (let t = 0; t <= end + 1e-6; t += STEP) {
+      // Long recordings: space the checks out so reading stays quick.
+      const step = Math.max(STEP, end / 240);
+      for (let t = 0; t <= end + 1e-6; t += step) {
         try { await seek(video, Math.min(t, end)); }
-        catch (err) { if (!found.length && t > 3 * STEP) throw err; continue; }
+        catch (err) { if (!found.length && t > 3 * step) throw err; continue; }
         const fp = fingerprint(video, ctx, w, h);
         const still = prev && diff(fp, prev) < SETTLED;
         // The very last sample counts as settled: recordings often end on a screen.
-        const last = t + STEP > end;
-        if ((still || last || !prev && video.duration < STEP) && (!kept || diff(fp, kept) > NEW_SCREEN)) {
+        const last = t + step > end;
+        if ((still || last || !prev && video.duration < step) && (!kept || diff(fp, kept) > NEW_SCREEN)) {
           found.push({ blob: await capture(video), time: video.currentTime, fp });
           kept = fp;
         }

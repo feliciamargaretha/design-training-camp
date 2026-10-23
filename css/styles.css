@@ -1681,3 +1681,4 @@ button.btn { border: 0; font: inherit; font-size: 12px; cursor: pointer; }
 .video-status.is-error { border-color: #e2a48f; background: #fff7f3; }
 .video-status__bar { height: 6px; border-radius: 3px; background: var(--card); margin-top: 10px; overflow: hidden; }
 .video-status__bar span { display: block; height: 100%; background: var(--ink); transition: width .2s; }
+.canvas > .video-status { margin: 0; width: min(100%, 520px); align-self: start; }

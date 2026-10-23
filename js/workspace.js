@@ -64,7 +64,7 @@
       }
 
       const has = screens.length > 0;
-      dropzone.hidden = has;
+      dropzone.hidden = has || busy > 0;
       list.hidden = !has;
       if (clearBtn) clearBtn.disabled = !has;
       if (count && !busy) {
@@ -97,7 +97,8 @@
     status.className = "video-status";
     status.hidden = true;
     status.setAttribute("role", "status");
-    canvas.append(status);
+    // First in the canvas, so it shows where the drop zone is, not below it.
+    canvas.prepend(status);
     function showStatus(text, pct, isError) {
       status.hidden = false;
       status.classList.toggle("is-error", !!isError);
@@ -120,6 +121,7 @@
       const base = (file.name || "Recording").replace(/\.[^.]+$/, "");
       const say = (t) => { if (count) count.textContent = t; };
       showStatus("Opening " + (file.name || "your video") + "…", 0);
+      render();
       say("Reading " + base + "…");
       try {
         const frames = await window.DTCVideo.extract(file, (f, n) => {
