@@ -15,6 +15,7 @@
     let screens = initial.map((s) => ({ ...s, url: URL.createObjectURL(s.blob) }));
 
     function changed() {
+      if (!busy && status && !status.classList.contains("is-error")) status.hidden = true;
       render();
       onChange(screens.map(({ id, name, blob }) => ({ id, name, blob })));
     }
@@ -91,14 +92,42 @@
 
     // A screen recording becomes one screen per distinct moment in it.
     let busy = 0;
+    // A status card in the canvas while a video is read, or when it fails.
+    const status = document.createElement("div");
+    status.className = "video-status";
+    status.hidden = true;
+    status.setAttribute("role", "status");
+    canvas.append(status);
+    function showStatus(text, pct, isError) {
+      status.hidden = false;
+      status.classList.toggle("is-error", !!isError);
+      status.replaceChildren();
+      const p = document.createElement("p");
+      p.textContent = text;
+      status.append(p);
+      if (pct != null) {
+        const bar = document.createElement("div");
+        bar.className = "video-status__bar";
+        const fill = document.createElement("span");
+        fill.style.width = Math.round(pct * 100) + "%";
+        bar.append(fill);
+        status.append(bar);
+      }
+    }
+
     async function addVideo(file) {
       busy++;
       const base = (file.name || "Recording").replace(/\.[^.]+$/, "");
       const say = (t) => { if (count) count.textContent = t; };
+      showStatus("Opening " + (file.name || "your video") + "…", 0);
       say("Reading " + base + "…");
       try {
-        const frames = await window.DTCVideo.extract(file, (f, n) =>
-          say("Reading " + base + "… " + Math.round(f * 100) + "% · " + n + (n === 1 ? " screen" : " screens") + " found"));
+        const frames = await window.DTCVideo.extract(file, (f, n) => {
+          const t = "Reading " + base + "… " + Math.round(f * 100) + "% · " + n + (n === 1 ? " screen" : " screens") + " found";
+          say(t);
+          showStatus(t, f);
+        });
+        status.hidden = true;
         frames.forEach((fr, i) => screens.push({
           id: Date.now() + "-v" + i + "-" + Math.random().toString(36).slice(2, 7),
           name: base + " · " + fr.label + ".png",
@@ -107,12 +136,14 @@
         }));
         busy--;
         changed();
-        if (!frames.length) say("No clear screens found in " + base + ". Try a recording that pauses on each screen.");
+        if (!frames.length) { const t = "No clear screens found in " + base + ". Try a recording that pauses on each screen."; say(t); showStatus(t, null, true); }
         else say(screens.length + (screens.length === 1 ? " screen" : " screens") + " · " + frames.length + " from " + base + ". Remove any you don't need.");
       } catch (_) {
         busy--;
         render();
-        say("This browser can't play " + (file.name || "that video") + ". Try it in Chrome or Safari, or export it as MP4 (H.264) or WebM.");
+        const t = "This browser couldn't open " + (file.name || "that video") + ". iPhone and Mac recordings (.mov) often use a format only Safari plays: try Safari, or export it as MP4 (H.264).";
+        say(t);
+        showStatus(t, null, true);
       }
     }
 

@@ -11,18 +11,23 @@
   const MAX_SCREENS = 15;
   const MAX_WIDTH = 1600;  // keep saved frames a sensible size
 
-  function once(el, ok, bad) {
+  // Waits for an event, fails on the error event, and gives up after `ms` so
+  // a video the browser can't decode never leaves the page waiting forever.
+  function once(el, ok, bad, ms) {
     return new Promise((resolve, reject) => {
-      const done = () => { el.removeEventListener(ok, done); el.removeEventListener(bad, fail); resolve(); };
-      const fail = () => { el.removeEventListener(ok, done); el.removeEventListener(bad, fail); reject(new Error("video_error")); };
+      let timer = null;
+      const off = () => { el.removeEventListener(ok, done); el.removeEventListener(bad, fail); clearTimeout(timer); };
+      const done = () => { off(); resolve(); };
+      const fail = () => { off(); reject(new Error("video_error")); };
       el.addEventListener(ok, done);
       el.addEventListener(bad, fail);
+      if (ms) timer = setTimeout(() => { off(); reject(new Error("video_timeout")); }, ms);
     });
   }
 
   async function seek(video, t) {
     if (Math.abs(video.currentTime - t) < 0.001) return;
-    const p = once(video, "seeked", "error");
+    const p = once(video, "seeked", "error", 5000);
     video.currentTime = t;
     await p;
   }
@@ -58,14 +63,23 @@
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
+    video.setAttribute("playsinline", "");
     video.preload = "auto";
+    // Some browsers (Safari especially) only load a video that is on the page.
+    video.style.cssText = "position:fixed;left:-10px;top:0;width:2px;height:2px;opacity:0;pointer-events:none";
+    document.body.append(video);
     video.src = url;
+    video.load();
     try {
-      await once(video, "loadeddata", "error");
+      const ready = once(video, "loadeddata", "error", 20000);
+      // A muted play-then-pause nudges browsers that wait for playback to decode.
+      video.addEventListener("loadedmetadata", () => { const pl = video.play(); if (pl && pl.then) pl.then(() => video.pause()).catch(() => {}); }, { once: true });
+      await ready;
+      video.pause();
       // Some recordings (often WebM) don't say how long they are until the
       // player has been to the end.
       if (!isFinite(video.duration)) {
-        const p = once(video, "seeked", "error");
+        const p = once(video, "seeked", "error", 8000);
         video.currentTime = 1e7;
         await p;
         await seek(video, 0);
@@ -80,7 +94,8 @@
       let prev = null, kept = null;
       const end = Math.max(0, video.duration - 0.05);
       for (let t = 0; t <= end + 1e-6; t += STEP) {
-        await seek(video, Math.min(t, end));
+        try { await seek(video, Math.min(t, end)); }
+        catch (err) { if (!found.length && t > 3 * STEP) throw err; continue; }
         const fp = fingerprint(video, ctx, w, h);
         const still = prev && diff(fp, prev) < SETTLED;
         // The very last sample counts as settled: recordings often end on a screen.
@@ -104,6 +119,7 @@
       URL.revokeObjectURL(url);
       video.removeAttribute("src");
       video.load();
+      video.remove();
     }
   }
 
